@@ -1,6 +1,8 @@
-# Minimalist Gym Tracker
+# LogSetGo
 
-A single-screen workout logger for the gym floor. Pick an exercise, tap the check, done. Built with Expo (SDK 57), React Native, NativeWind v4, and Reanimated.
+**Track. Rest. Progress.**
+
+A distraction-free athletic utility for the gym floor: frictionless workout logging, a rest timer that starts itself, daily attendance, and body-weight / BMI tracking in one True-Black OLED interface. Built with Expo (SDK 57), React Native, NativeWind v4, and Reanimated.
 
 ```bash
 npm install
@@ -43,13 +45,13 @@ Tabs mount when first opened and then stay alive, so scroll position, the calend
 
   | Range | Category | Color |
   |---|---|---|
-  | < 18.5 | Underweight | Amber `#FF9F0A` |
+  | < 18.5 | Underweight | Red `#FF453A` |
   | 18.5 – 24.9 | Normal Weight | Green `#30D158` |
-  | 25.0 – 29.9 | Overweight | Amber `#FF9F0A` |
-  | ≥ 30.0 | Obese | Soft orange `#FF7A3D` |
+  | 25.0 – 29.9 | Overweight | Red `#FF453A` |
+  | ≥ 30.0 | Obese | Red `#FF453A` |
 
 - **Gauge:** four proportional segments, your band at full color, and a marker that glides to your exact BMI.
-- **Change colors:** the change is colored by what it does to your band, not by direction. Moving toward Normal is green, drifting further out is amber, and staying within a band is neutral grey. Losing weight is not automatically "good".
+- **Change colors:** the change is colored by what it does to your band, not by direction. Moving toward Normal is green, drifting further out is red, and staying within a band is neutral grey. Losing weight is not automatically "good".
 - **History:** newest first, with time, weight, change, and BMI. Tap **Edit** to delete a mistaken entry. The **Progress** card shows the trend, total change, lowest and highest.
 
 ### Attendance & daily flow
@@ -76,7 +78,7 @@ The app opens on a calendar. Tap any date and pick a status:
 | Custom timer | Expand **Custom timer**: −/+ for minutes and seconds (hold to repeat, seconds move in 5s steps), optional name, **Add to Dashboard**. |
 | Saved timers | Listed with one-tap start and a delete button. Persisted on the device (up to 20). |
 | Auto-start | Switch on the card. Completing a set (any checkmark or the Log button) starts the **Default rest**, which you pick from presets or your saved timers. Undoing a set does not start it. |
-| Countdown banner | Docks above the Log button: 32pt bold rounded digits, progress bar, `+15s`, Pause/Resume, Skip. Green while running, amber for the last 10 s, grey when paused. At `0:00` it pulses, fires a strong haptic (plus vibration on Android), shows "Rest over", and clears itself after 6 s. |
+| Countdown banner | Docks above the Log button: 34pt bold rounded digits, progress bar, `+15s`, Pause/Resume, Skip. Green while running, yellow (`#FFD60A`) for the last 10 s, grey when paused. At `0:00` it pulses, fires a strong haptic (plus vibration on Android), shows "Rest over", and clears itself after 6 s. |
 
 The countdown is timestamp-based, so it stays accurate if the app is backgrounded, and the screen stays awake while it runs. There are no background notifications yet, so keep the app open during rest.
 

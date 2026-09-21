@@ -12,7 +12,7 @@ module.exports = {
         label: '#FFFFFF',
         muted: '#8E8E93',
         accent: '#30D158',
-        warn: '#FF9F0A',
+        warn: '#FFD60A',
         danger: '#FF453A',
         holiday: '#FFD60A',
       },

@@ -5,12 +5,12 @@ import { shortDate } from '../../lib/dates';
 import { fmtDelta, fmtWeight, toDisplay } from '../../lib/units';
 import { useBody } from '../../store/body';
 import { useGym } from '../../store/gym';
-import { colors } from '../../theme';
+import { colors, roundedFont } from '../../theme';
 import { PlusIcon } from '../Icons';
 import { Caption, Card, PillButton } from '../ui';
 import { BmiGauge, CategoryChip } from './BmiGauge';
 
-export const toneColor = (t: Tone) => (t === 'toward' ? colors.accent : t === 'away' ? colors.warn : colors.muted);
+export const toneColor = (t: Tone) => (t === 'toward' ? colors.accent : t === 'away' ? colors.danger : colors.muted);
 
 /** Current weight, change since the last log, and the BMI gauge. */
 export function HeroCard({ onUpdate, onEditHeight }: { onUpdate: () => void; onEditHeight: () => void }) {
@@ -31,7 +31,7 @@ export function HeroCard({ onUpdate, onEditHeight }: { onUpdate: () => void; onE
       {latest ? (
         <>
           <View className="mt-1 flex-row flex-wrap items-baseline">
-            <Text className="text-display tabular-nums text-label" accessibilityLabel={`${fmtWeight(latest.kg, unit)} ${unit}`}>
+            <Text className="text-display tabular-nums text-label" style={{ fontFamily: roundedFont }} accessibilityLabel={`${fmtWeight(latest.kg, unit)} ${unit}`}>
               {fmtWeight(latest.kg, unit)}
             </Text>
             <Text className="ml-1 text-h2 text-muted">{unit}</Text>
@@ -49,7 +49,7 @@ export function HeroCard({ onUpdate, onEditHeight }: { onUpdate: () => void; onE
         </>
       ) : (
         <View className="py-3">
-          <Text className="text-display text-muted/40">—</Text>
+          <Text className="text-display text-muted/40" style={{ fontFamily: roundedFont }}>—</Text>
           <Text className="mt-1 text-body text-muted">Log your weight once. It stays put until you update it, so there's no daily entry.</Text>
         </View>
       )}
@@ -59,7 +59,7 @@ export function HeroCard({ onUpdate, onEditHeight }: { onUpdate: () => void; onE
         <View className="flex-row items-center justify-between">
           <View>
             <Text className="text-caption uppercase tracking-wider text-muted/70">BMI</Text>
-            <Text className="text-display tabular-nums text-label">{bmi == null ? '—' : bmi.toFixed(1)}</Text>
+            <Text className="text-display tabular-nums text-label" style={{ fontFamily: roundedFont }}>{bmi == null ? '—' : bmi.toFixed(1)}</Text>
           </View>
           {bmi != null ? <CategoryChip bmi={bmi} /> : null}
         </View>

@@ -1,14 +1,21 @@
 {
   "expo": {
-    "name": "Minimalist Gym Tracker",
+    "name": "LogSetGo",
     "slug": "minimalist-gym-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#000000",
-    "splash": { "backgroundColor": "#000000" },
-    "ios": { "supportsTablet": false, "bundleIdentifier": "app.minimalist.gymtracker" },
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.minimalist.gymtracker"
+    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#000000",
@@ -18,6 +25,10 @@
       },
       "predictiveBackGestureEnabled": false
     },
-    "web": { "bundler": "metro", "favicon": "./assets/favicon.png" }
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "description": "Track. Rest. Progress."
   }
 }

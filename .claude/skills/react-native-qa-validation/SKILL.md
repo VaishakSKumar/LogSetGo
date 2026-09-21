@@ -92,7 +92,7 @@ Until then: **report Tier 2 as NOT CONFIGURED.**
 
 ## Tier 3: System Testing (ST). PARTIAL
 
-**Objective:** whole features and data flows: Attendance → Present → Gym Progress on that date; set logged → rest timer auto-starts → green to amber at 10 s → 0:00; weight logged → BMI updates → survives reload.
+**Objective:** whole features and data flows: Attendance → Present → Gym Progress on that date; set logged → rest timer auto-starts → green to yellow at 10 s → 0:00; weight logged → BMI updates → survives reload.
 
 * **Covered by Tier 1:** the reducer and store transitions, timer engine, attendance resolution, body/BMI maths.
 * **Not automated:** UI flows and AsyncStorage rehydration. For changes touching them, drive the app in the browser preview and verify the flow by hand:
@@ -155,7 +155,7 @@ appId: app.minimalist.gymtracker
 * [ ] Type scale respected: 34 display / 28 H1 / 17 H2 / 20 numbers / 15 body / 12 caption.
 * [ ] Touch targets are at least 44×44 pt; spacing follows the 8 pt rhythm.
 * [ ] Tabs, sheets and state changes animate in about 250 ms ease-out; no visible jank.
-* [ ] Status colors match spec: Present `#30D158`, Absent `#FF453A`, Holiday `#FFD60A`, BMI Normal `#30D158`, out-of-range `#FF9F0A`, timer warning `#FF9F0A`.
+* [ ] Status colors match spec: Present `#30D158`, Absent `#FF453A`, Holiday `#FFD60A`, BMI Normal `#30D158`, BMI out-of-range and delete actions `#FF453A`, timer warning (final 10 s) `#FFD60A`.
 
 ---
 

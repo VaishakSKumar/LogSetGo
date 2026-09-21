@@ -145,7 +145,7 @@ function SavedRow({ item, first }: { item: SavedTimer; first: boolean }) {
         }}
         className="h-11 w-11 items-center justify-center active:opacity-60"
       >
-        <CloseIcon size={16} />
+        <CloseIcon size={16} color={colors.danger} />
       </Pressable>
     </View>
   );

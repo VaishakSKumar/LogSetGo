@@ -47,12 +47,12 @@ export interface CategoryMeta {
   color: string;
 }
 
-/** Normal is green; anything out of range is amber, with Obese a softer orange. */
+/** Normal is green; every out-of-range band is System Red. */
 export const BMI_CATEGORIES: CategoryMeta[] = [
-  { key: 'underweight', label: 'Underweight', range: '< 18.5', min: 0, color: '#FF9F0A' },
+  { key: 'underweight', label: 'Underweight', range: '< 18.5', min: 0, color: '#FF453A' },
   { key: 'normal', label: 'Normal Weight', range: '18.5 – 24.9', min: 18.5, color: '#30D158' },
-  { key: 'overweight', label: 'Overweight', range: '25.0 – 29.9', min: 25, color: '#FF9F0A' },
-  { key: 'obese', label: 'Obese', range: '≥ 30.0', min: 30, color: '#FF7A3D' },
+  { key: 'overweight', label: 'Overweight', range: '25.0 – 29.9', min: 25, color: '#FF453A' },
+  { key: 'obese', label: 'Obese', range: '≥ 30.0', min: 30, color: '#FF453A' },
 ];
 
 export const categoryMeta = (key: BmiCategory) => BMI_CATEGORIES.find((c) => c.key === key)!;

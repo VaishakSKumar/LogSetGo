@@ -10,8 +10,8 @@ export const colors = {
   label: '#FFFFFF',
   muted: '#8E8E93',
   accent: '#30D158',
-  /** final-10-seconds countdown */
-  warn: '#FF9F0A',
+  /** timer warning (final 10 seconds): System Yellow */
+  warn: '#FFD60A',
   /** attendance: Absent / Holiday (Present uses accent) */
   danger: '#FF453A',
   holiday: '#FFD60A',

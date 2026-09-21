@@ -22,7 +22,7 @@ import { PillButton, RoundButton } from './ui';
 const BAR_HEIGHT = 6;
 
 /**
- * Docked countdown card. Green while running, amber for the last 10 seconds,
+ * Docked countdown card. Green while running, System Yellow for the last 10 seconds,
  * grey while paused, and a pulse + haptic at 0:00.
  */
 export function RestBanner() {
@@ -97,8 +97,9 @@ function Banner() {
               style={[
                 {
                   fontFamily: roundedFont,
-                  fontSize: 32,
-                  lineHeight: 38,
+                  fontSize: 34,
+                  lineHeight: 41,
+                  letterSpacing: -0.5,
                   fontWeight: '700',
                   fontVariant: ['tabular-nums'],
                 },
