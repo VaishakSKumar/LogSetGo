@@ -45,6 +45,12 @@
           "color": "#30D158"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "709ca65f-e5a1-47c7-b3f0-29bad1fe6a16"
+      }
+    },
+    "owner": "whyyshock"
   }
 }
