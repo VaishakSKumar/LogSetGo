@@ -10,7 +10,7 @@ import { emptyBody } from './body';
 import { DEFAULT_BAR, oneRepMax, percentTable, platesPerSide, PLATES, warmupSets } from './calc';
 import { buildDemoData } from './demo';
 import { buildHistory, isLogged, suggestNext, weekTotals } from './progress';
-import { PLAN_EXERCISE_IDS, buildPlan, routineFromSession, type PlanDays } from './routines';
+import { PLAN_EXERCISE_IDS, buildPlan, routineFromSession, routineIdFor, type PlanDays } from './routines';
 import { e1rmSeries, goalProgress, muscleSplit, recordsList, weeklyBuckets, workoutSummary } from './stats';
 import { MAX_ERRORS, pushError, type ErrorEntry } from './errorlog';
 import { addSeconds, defaultTimerSettings, finishTimer, idleTimer, parseTimerSettings, pauseTimer, restAlertPlan, resumeTimer, skipTimer, startTimer } from './timer';
@@ -213,6 +213,15 @@ describe('plan builder', () => {
     assert.equal(beginner.length, 4);
     assert.equal(buildPlan({ goal: 'strength', days: 3, level: 'advanced' })[0].items.length, 6);
     assert.ok(buildPlan({ goal: 'endurance', days: 4, level: 'intermediate' })[0].items.every((i) => i.reps === 15));
+  });
+
+  it('saving under an existing name updates that routine instead of duplicating it', () => {
+    const existing = [{ id: 'plan-1', name: 'Upper A', items: [] }, { id: 'x', name: 'Legs', items: [] }];
+    assert.equal(routineIdFor(existing, 'upper a ', 'fresh'), 'plan-1'); // case and spacing don't matter
+    assert.equal(routineIdFor(existing, 'Upper B', 'fresh'), 'fresh');
+    let s = reducer(initialData, { type: 'addRoutine', routine: { id: 'plan-1', name: 'Upper A', items: [{ exerciseId: 'a', sets: 3 }] } });
+    s = reducer(s, { type: 'addRoutine', routine: { id: routineIdFor(s.routines, 'Upper A', 'fresh'), name: 'Upper A', items: [{ exerciseId: 'b', sets: 5 }] } });
+    assert.deepEqual(s.routines.map((r) => [r.id, r.items[0].exerciseId]), [['plan-1', 'b']]);
   });
 
   it('saves a session as a routine, keeping order and set counts', () => {

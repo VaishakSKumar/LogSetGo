@@ -91,3 +91,12 @@ export function routineFromSession(session: Session, name: string, id: string): 
     .map(([exerciseId, rows]) => ({ exerciseId, sets: rows.length }));
   return items.length ? { id, name: name.trim() || session.label, items } : null;
 }
+
+/**
+ * Saving under a name you already use should update that routine, not create a look-alike.
+ * Returns the id to save under: the existing routine's, or a fresh one.
+ */
+export function routineIdFor(routines: Routine[], name: string, freshId: string): string {
+  const key = name.trim().toLowerCase();
+  return routines.find((r) => r.name.trim().toLowerCase() === key)?.id ?? freshId;
+}

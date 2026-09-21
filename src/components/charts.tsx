@@ -43,9 +43,12 @@ interface BarChartProps {
 export function BarChart({ data, height = 150, format, summary }: BarChartProps) {
   const [width, setWidth] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
-  const top = 18;
-  const bottom = 18;
-  const plotH = height - top - bottom;
+  // The svg is (height - 24) tall: a little headroom, the plot, then a strip for the x-axis labels.
+  const svgH = height - 24;
+  const padTop = 4;
+  const labelStrip = 16;
+  const plotH = svgH - padTop - labelStrip;
+  const base = padTop + plotH; // y of the baseline
   const max = Math.max(1, ...data.map((d) => d.value));
   const n = data.length;
   const gap = 2;
@@ -64,11 +67,11 @@ export function BarChart({ data, height = 150, format, summary }: BarChartProps)
         <Text className="text-body font-semibold tabular-nums text-label">{shown ? format(shown.value) : ''}</Text>
       </View>
 
-      <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={{ height: height - 24 }}>
+      <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={{ height: svgH }}>
         {width > 0 ? (
-          <Svg width={width} height={height - 24}>
+          <Svg width={width} height={svgH}>
             {[0, 0.5, 1].map((t) => (
-              <Line key={t} x1={0} x2={width} y1={plotH - t * plotH + 4} y2={plotH - t * plotH + 4} stroke={GRID} strokeWidth={1} />
+              <Line key={t} x1={0} x2={width} y1={base - t * plotH} y2={base - t * plotH} stroke={GRID} strokeWidth={1} />
             ))}
             {data.map((d, i) => {
               const h = d.value > 0 ? Math.max(3, (d.value / max) * plotH) : 0;
@@ -76,7 +79,7 @@ export function BarChart({ data, height = 150, format, summary }: BarChartProps)
               return (
                 <Path
                   key={i}
-                  d={h ? barPath(x, plotH + 4 - h, barW, h, 4) : ''}
+                  d={h ? barPath(x, base - h, barW, h, 4) : ''}
                   fill={i === active ? HERO : MARK}
                   stroke={i === active ? SURFACE : 'none'}
                   strokeWidth={0}
@@ -85,7 +88,7 @@ export function BarChart({ data, height = 150, format, summary }: BarChartProps)
             })}
             {data.map((d, i) =>
               d.tick ? (
-                <SvgText key={`t${i}`} x={i * (slot + gap) + slot / 2} y={plotH + 18} fill={INK} fontSize={10} textAnchor="middle">
+                <SvgText key={`t${i}`} x={i * (slot + gap) + slot / 2} y={svgH - 3} fill={INK} fontSize={10} textAnchor="middle">
                   {d.tick}
                 </SvgText>
               ) : null,

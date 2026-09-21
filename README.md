@@ -8,7 +8,9 @@ A distraction-free athletic utility for the gym floor: frictionless workout logg
 npm install
 npx expo start          # press i / a, or scan the QR code in Expo Go
 npm run web             # quick look in a browser
-npm test                # logic tests (search, autofill, overload, weekly maths, reducer)
+npm test                # logic tests (search, autofill, overload, weekly maths, reducer, backup, plans, stats…)
+npm run qa:ui           # UI tests: Jest + Testing Library drive the real screens
+npm run qa:gate         # everything: types, logic, UI, iOS + Android + web builds
 npm run typecheck
 ```
 
@@ -40,6 +42,23 @@ A three-tab bar sits at the top of every screen:
 | **BMI & Weight** | Weight log, height, BMI gauge, progress trend. |
 
 Tabs mount when first opened and then stay alive, so scroll position, the calendar month and an open search survive switching. A running rest timer stays docked on every tab. On Android, the back button returns to Attendance before it exits the app.
+
+### Backup, records and more
+| Feature | What it does |
+|---|---|
+| **Settings** (the sliders button, top right) | Units, weight step (1 / 1.25 / 2.5 / 5 kg or 2.5 / 5 / 10 lb), notifications, backup, diagnostics. |
+| **Backup & restore** | Export everything as one JSON file; import it on any device. **Merge** adds what's missing and never overwrites your data; **Replace** restores exactly what's in the file. Bad or newer files give a readable error and change nothing. |
+| **CSV export** | Every logged set, and the weight log, ready for a spreadsheet. |
+| **Routines** | Save a workout and start it in one tap: rows for every exercise, first one selected. Saving under an existing name updates it. |
+| **Plan builder** | Pick goal (strength / muscle / endurance), days (2–6) and level, and it lays out Full Body, Upper/Lower or Push/Pull/Legs with sensible sets and reps. Fixed rules, works offline. It is not AI. |
+| **Stats & records** | Weekly volume chart (4/12/26 weeks), muscle balance, strength trend per lift, and every personal record. Each chart has a "Show data" table. |
+| **Workout summary** | Duration, volume, sets, PRs, top set per exercise, and the change vs your last workout of the same name. |
+| **Goals** | "Lift 100 kg" per exercise, with progress, a pace estimate from your last sessions (needs 3+ sessions over a week), and milestones. |
+| **Tools** | 1RM with a percentage table, plate calculator (kg and lb), and a warm-up ramp. |
+| **Set details** | Tap a set number: mark a **warm-up** (never counts toward volume, PRs, history or suggestions), record **RPE**, add a note. Exercise notes live on the goal card. |
+| **Custom exercises** | Choose a muscle group when you add one, so it shows in muscle balance. |
+| **Notifications** (iOS / Android apps) | A buzz when a rest ends with the app closed, and an optional daily reminder. The web version can't notify while closed. |
+| **Diagnostics** | Errors are kept on the device (last 20) and shown in Settings; share them if something breaks. Nothing is sent automatically. A crash shows a recovery screen instead of a blank one. |
 
 ### BMI & Weight
 - **Weight is stored, not asked for.** Your latest weight stays put until you log a new one. Nothing prompts you daily. Every entry keeps its date and time.
@@ -113,6 +132,13 @@ src/store/gym.tsx           provider, persistence, derived data
 src/lib/progress.ts         history, ghosts, PRs, overload, weekly rollups
 src/lib/search.ts           exercise ranking + ghost completion
 src/lib/timer.ts            rest-timer engine + saved-timer settings (tested)
+src/lib/backup.ts           backup / restore / merge / CSV (tested)
+src/lib/appdata.ts          data normalisation + merge (tested)
+src/lib/routines.ts         plan builder + routine helpers (tested)
+src/lib/stats.ts            volume, records, muscle split, summary, goals (tested)
+src/lib/calc.ts             1RM, plates, warm-ups (tested)
+src/lib/notify.ts, files.ts, diagnostics.ts   native-facing helpers (safe no-ops on web)
+src/__tests__/              UI tests (Jest + Testing Library)
 src/store/timer.tsx         timer provider: scheduling, persistence, keep-awake
 src/components/             Header, ExerciseSearch, SetRow, SetTable, LogDock,
                             RestBanner, TimerDashboard, ExerciseInsights,

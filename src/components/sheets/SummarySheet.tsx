@@ -3,7 +3,7 @@ import { Text, TextInput, View } from 'react-native';
 
 import { shortDate } from '../../lib/dates';
 import { haptic } from '../../lib/haptics';
-import { routineFromSession } from '../../lib/routines';
+import { routineFromSession, routineIdFor } from '../../lib/routines';
 import { workoutSummary } from '../../lib/stats';
 import { fmtVolume, fmtWeight } from '../../lib/units';
 import { useGym } from '../../store/gym';
@@ -29,7 +29,10 @@ export function SummarySheet({ visible, onClose }: { visible: boolean; onClose: 
 
   const saveRoutine = () => {
     const session = data.sessions[today];
-    const routine = session ? routineFromSession(session, name || summary?.label || 'My workout', `mine-${Date.now().toString(36)}`) : null;
+    const finalName = name.trim() || summary?.label || 'My workout';
+    // Same name as an existing routine? Update it instead of adding a look-alike.
+    const id = routineIdFor(data.routines, finalName, `mine-${Date.now().toString(36)}`);
+    const routine = session ? routineFromSession(session, finalName, id) : null;
     if (!routine) return;
     actions.addRoutine(routine);
     haptic.pulse();

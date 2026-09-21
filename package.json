@@ -13,15 +13,18 @@
     "qa:types": "tsc --noEmit",
     "qa:unit": "npm test",
     "qa:bundle": "node scripts/qa-bundle.js",
-    "qa:gate": "npm run qa:types && npm run qa:unit && npm run qa:bundle && npm run qa:web",
+    "qa:gate": "npm run qa:types && npm run qa:unit && npm run qa:ui && npm run qa:bundle && npm run qa:web",
     "icons": "node scripts/generate-icons.js",
     "build:web": "node scripts/build-web.js",
     "preview:web": "node scripts/serve-web.js",
-    "qa:web": "node scripts/build-web.js"
+    "qa:web": "node scripts/build-web.js",
+    "test:ui": "jest",
+    "qa:ui": "jest"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@types/jest": "29.5.14",
     "babel-preset-expo": "~57.0.0",
     "expo": "~57.0.24",
     "expo-document-picker": "~57.0.2",
@@ -32,6 +35,8 @@
     "expo-sharing": "~57.0.21",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
+    "jest": "~29.7.0",
+    "jest-expo": "~57.0.5",
     "nativewind": "^4.2.7",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -44,10 +49,24 @@
     "tailwindcss": "^3.4.19"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^14.0.1",
     "@types/node": "^26.6.2",
     "@types/react": "~19.2.2",
+    "react-test-renderer": "^19.2.3",
     "sharp": "^0.35.4",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ],
+    "testMatch": [
+      "<rootDir>/src/__tests__/**/*.test.tsx"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|react-native-svg|nativewind|react-native-css-interop|react-native-reanimated|react-native-worklets|react-native-safe-area-context))"
+    ]
   }
 }

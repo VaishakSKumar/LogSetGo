@@ -52,7 +52,7 @@ Restart `npx expo start`. On first launch (nothing saved yet) it fills in five w
 ### Check that everything is healthy
 
 ```bash
-npm run qa:gate      # type-check, 57 logic tests, iOS + Android build check
+npm run qa:gate      # type-check, logic tests, UI tests, iOS + Android + web build checks
 ```
 
 ### Regenerate the logo (only if you change it)
@@ -81,6 +81,8 @@ There is **no free way to put a real native app on someone else's iPhone**. That
 ### Important: everyone's data is private to their own device
 
 LogSetGo stores everything on the device it runs on. There is no account or server. Friends will not see each other's data, and you can't see theirs. Reinstalling, or clearing browser data, erases it. That's good for privacy, but tell your friends.
+
+**Tell them about backups:** Settings (the sliders button, top right) → **Export backup** saves one file with everything, and **Import backup** restores it on a new phone. It's the only protection against losing data.
 
 ---
 

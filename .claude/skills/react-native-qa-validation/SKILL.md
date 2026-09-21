@@ -7,7 +7,7 @@ stack:
   - NativeWind v4
   - React Native Reanimated 4
   - node:test via tsx (Tier 1, live today)
-  - Jest & React Native Testing Library (Tiers 2-3, not yet installed)
+  - Jest (jest-expo) & React Native Testing Library v14 (Tier 2, live today)
   - Maestro (Tier 5, not yet installed)
 ---
 
@@ -26,7 +26,7 @@ An automated quality gate. Run it before committing, opening a PR, or deploying.
 | Tier | What it proves | Status | Command |
 |---|---|---|---|
 | 1 Unit | Pure logic + types | **Live** | `npm run qa:types` and `npm run qa:unit` |
-| 2 Integration | Screen-level component behavior | NOT CONFIGURED | needs Jest + RNTL (see below) |
+| 2 Integration | Screen-level component behavior | **Live** | `npm run qa:ui` |
 | 3 System | Whole flows + persistence | Partial: reducer/store flows are in Tier 1 tests; UI flows are a manual/agent check | see Tier 3 |
 | 4 SIT | Compiles as real native apps and an installable web app; bridges fail safe | **Live** (bundle + web build) | `npm run qa:bundle` and `npm run qa:web` |
 | 5 UAT | End-to-end journey + design bar | NOT CONFIGURED (Maestro); manual checklist available | see Tier 5 |
@@ -34,7 +34,7 @@ An automated quality gate. Run it before committing, opening a PR, or deploying.
 **Master command** (the live tiers):
 
 ```bash
-npm run qa:gate      # qa:types -> qa:unit -> qa:bundle -> qa:web; exit code 0 = live tiers pass
+npm run qa:gate      # qa:types -> qa:unit -> qa:ui -> qa:bundle -> qa:web; exit code 0 = live tiers pass
 ```
 
 `qa:gate` passing certifies **only** the live tiers. Say so; do not describe the change as "fully QA'd".
@@ -68,27 +68,27 @@ npm run qa:unit     # node:test suite: src/lib/logic.test.ts
 * [ ] New behavior added a test; a bug fix added a regression test that fails without the fix.
 * [ ] Timestamp-based logic (timer, streaks) is tested with injected `now`, never real clocks.
 
-## Tier 2: Integration Testing (IT). NOT CONFIGURED
+## Tier 2: Integration Testing (IT). LIVE
 
-**Objective:** component interaction: typing a weight updates the BMI gauge, tapping a preset starts the timer, tapping the check locks a row.
+**Objective:** component interaction inside the real providers: tapping a calendar date and choosing a status, entering height and weight and seeing the BMI, logging a set and watching the rest timer start.
 
-Requires installing Jest + `@testing-library/react-native`. When you set it up, note that **Reanimated 4 has no `src/reanimated2/jestUtils`**. Use what the installed version exports:
-
-```javascript
-// jest.setup.js
-import { setUpTests } from 'react-native-reanimated';
-setUpTests();
-
-// or, to fully stub animations:
-jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
+```bash
+npm run qa:ui    # jest (jest-expo preset) + @testing-library/react-native; tests in src/__tests__/
 ```
 
-Verify the `react-native-worklets` mock requirement against the installed version, and mock `expo-haptics` and `@react-native-async-storage/async-storage` (the official async-storage jest mock). Prefer real NativeWind class output over mocking `nativewind` away, so style regressions are catchable.
+How it is set up (so new tests follow the same pattern):
+* `jest.setup.js` mocks AsyncStorage (in memory, **cleared before every test**), Reanimated 4 and worklets (their shipped mocks), haptics, keep-awake, notifications, document picker, sharing and file system.
+* `src/__tests__/helpers.tsx` → `renderWithApp(<Screen />)` wraps a screen in every real provider.
+* Testing Library v14 is **async**: `await render(...)`, `await fireEvent.press(...)`.
+* Query by `accessibilityLabel` (`getByLabelText`) for controls that have one, by text otherwise. When one label legitimately appears twice (e.g. "Log set 1" is both the row check and the dock button), use `findAllByLabelText` and pick one.
+* The web-only picker and the Reanimated timing are not exercised here; those are covered by the browser check in Tier 3.
 
-* Tests live in `src/__tests__/integration/`, script `qa:integration`.
-* Use `withReanimatedTimer` / `advanceAnimationByTime` to assert animation results instead of sleeping.
+**Audit checklist**
 
-Until then: **report Tier 2 as NOT CONFIGURED.**
+* [ ] A new screen-level behavior has a test that drives it through the UI, not just its helper.
+* [ ] The test can fail: temporarily break the behavior and confirm it goes red (mutation check), then restore it.
+* [ ] Assertions use user-visible output (text, labels), not internal state.
+* [ ] No test depends on another test's data (storage is reset for you).
 
 ## Tier 3: System Testing (ST). PARTIAL
 
@@ -167,17 +167,18 @@ Scripts already in `package.json`:
 
 ```json
 "qa:types":  "tsc --noEmit",
+"qa:ui":     "jest",
 "qa:unit":   "npm test",
 "qa:bundle": "node scripts/qa-bundle.js",
 "qa:web":    "node scripts/build-web.js",
-"qa:gate":   "npm run qa:types && npm run qa:unit && npm run qa:bundle && npm run qa:web"
+"qa:gate":   "npm run qa:types && npm run qa:unit && npm run qa:ui && npm run qa:bundle && npm run qa:web"
 ```
 
-When Tiers 2 / 3 / 5 are set up, add `qa:integration`, `qa:system`, `qa:uat` and extend `qa:gate` in tier order.
+When Tiers 3 / 5 are set up, add `qa:system`, `qa:uat` and extend `qa:gate` in tier order.
 
 ## Execution protocol
 
 1. Run `npm run qa:gate`.
-2. **Exit 0:** report *"Live tiers pass (types, unit, iOS + Android bundle, web build)"*, then list each unconfigured or manual tier by name with its status. The change may be committed.
+2. **Exit 0:** report *"Live tiers pass (types, unit, UI integration, iOS + Android bundle, web build)"*, then list each unconfigured or manual tier by name with its status. The change may be committed.
 3. **Non-zero:** stop. Show the failing tier's output, fix the cause (not the test), and rerun from Tier 1.
 4. Never commit with a failing configured tier, and never describe `NOT CONFIGURED` tiers as passed.
