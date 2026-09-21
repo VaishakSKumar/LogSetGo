@@ -74,6 +74,26 @@ export async function scheduleRestAlert(seconds: number, label?: string | null) 
   }
 }
 
+/**
+ * Fires a real alert through the same path as a rest-over one (same channel, same timed trigger)
+ * `seconds` from now, so a phone that stays silent can be diagnosed without doing a workout.
+ * Unlike the rest alert it also shows while the app is open.
+ */
+export async function sendTestAlert(seconds = 5): Promise<'sent' | 'blocked' | 'failed'> {
+  if (!notificationsSupported) return 'failed';
+  if (!(await ensurePermission())) return 'blocked';
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: 'test-alert',
+      content: { title: 'Test alert', body: 'LogSetGo can notify you. Rest-over alerts will arrive like this.', data: { kind: 'test' }, sound: true },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds, channelId: 'rest-timer' },
+    });
+    return 'sent';
+  } catch {
+    return 'failed';
+  }
+}
+
 export async function cancelRestAlert() {
   if (!notificationsSupported) return;
   try {

@@ -11,6 +11,7 @@ import { emptyBody } from './body';
 import { DEFAULT_BAR, oneRepMax, percentTable, platesPerSide, PLATES, warmupSets } from './calc';
 import { buildDemoData } from './demo';
 import { buildHistory, isLogged, suggestNext, weekTotals } from './progress';
+import { formatSets, loggedExercises, summarizeDay } from './session';
 import { PLAN_EXERCISE_IDS, buildPlan, routineFromSession, routineIdFor, type PlanDays } from './routines';
 import { e1rmSeries, goalProgress, muscleSplit, recordsList, weeklyBuckets, workoutSummary } from './stats';
 import { MAX_ERRORS, pushError, type ErrorEntry } from './errorlog';
@@ -404,5 +405,89 @@ describe('Gym Progress gate', () => {
     assert.equal(canLog(map, '2026-09-18'), false); // unmarked
     const derived = resolveStatuses({}, { '2026-09-17': { exercises: { x: [{ id: 'r', weight: 50, reps: 5, done: true }] } } } as never);
     assert.equal(canLog(derived, '2026-09-17'), true);
+  });
+});
+
+describe('session summary and exercise feed', () => {
+  const row = (id: string, weight: number, reps: number, at: number, extra: Partial<SetRow> = {}): SetRow => ({ id, weight, reps, done: true, at, ...extra });
+  const empty = (id: string): SetRow => ({ id, weight: null, reps: null, done: false });
+  const session = {
+    label: 'Push A',
+    exercises: {
+      // logged second, though it comes first in the object
+      squat: [row('1', 100, 5, 2000), row('2', 100, 5, 2100)],
+      // picked but never logged: must not appear
+      curl: [empty('1'), empty('2')],
+      // logged first; the first set is a warm-up
+      bench: [row('1', 40, 10, 1000, { warmup: true }), row('2', 60, 8, 1100), empty('3')],
+    },
+  };
+
+  it('lists only exercises with a finished set, in the order they were first logged', () => {
+    assert.deepEqual(loggedExercises(session).map((e) => e.id), ['bench', 'squat']);
+    assert.deepEqual(loggedExercises(undefined), []);
+    assert.deepEqual(loggedExercises({ label: 'x', exercises: { a: [empty('1')] } }), []);
+  });
+
+  it('keeps warm-ups on the card but out of the sets and volume', () => {
+    const bench = loggedExercises(session)[0];
+    assert.deepEqual(bench.sets.map((s) => s.number), [1, 2]);
+    assert.equal(bench.workingSets, 1);
+    assert.equal(bench.volume, 60 * 8);
+  });
+
+  it('adds the day up: exercises, working sets, volume', () => {
+    assert.deepEqual(summarizeDay(session), { exercises: 2, sets: 3, volume: 60 * 8 + 100 * 5 * 2 });
+    assert.deepEqual(summarizeDay(undefined), { exercises: 0, sets: 0, volume: 0 });
+  });
+
+  it('formats earlier sets for the "last time" line', () => {
+    const sets = [{ weight: 60, reps: 8 }, { weight: 60, reps: 8 }, { weight: 62.5, reps: 6 }, { weight: 65, reps: 5 }, { weight: 65, reps: 5 }];
+    assert.equal(formatSets(sets, 'kg'), '60 × 8 · 60 × 8 · 62.5 × 6 · +2 more');
+    assert.equal(formatSets(sets.slice(0, 2), 'kg'), '60 × 8 · 60 × 8');
+  });
+
+  it('deleting an exercise removes its sets and note, keeps the rest, and deselects it', () => {
+    const state: AppData = {
+      ...initialData,
+      activeExerciseId: 'bench',
+      sessions: { '2026-09-21': { ...session, notes: { bench: 'felt heavy', squat: 'ok' } }, '2026-09-20': { label: 'x', exercises: { bench: [row('1', 50, 5, 1)] } } },
+    };
+    const next = reducer(state, { type: 'removeExercise', date: '2026-09-21', exerciseId: 'bench' });
+    assert.deepEqual(Object.keys(next.sessions['2026-09-21'].exercises).sort(), ['curl', 'squat']);
+    assert.deepEqual(next.sessions['2026-09-21'].notes, { squat: 'ok' });
+    assert.equal(next.activeExerciseId, null);
+    assert.equal(next.sessions['2026-09-20'].exercises.bench.length, 1); // other days untouched
+    assert.equal(summarizeDay(next.sessions['2026-09-21']).volume, 1000);
+    // a different active exercise stays selected; a missing one is a no-op
+    assert.equal(reducer({ ...state, activeExerciseId: 'squat' }, { type: 'removeExercise', date: '2026-09-21', exerciseId: 'bench' }).activeExerciseId, 'squat');
+    assert.equal(reducer(state, { type: 'removeExercise', date: '2026-09-21', exerciseId: 'nope' }), state);
+    assert.equal(reducer(state, { type: 'deselect' }).activeExerciseId, null);
+  });
+});
+
+describe('adding a set', () => {
+  const D = '2026-09-21';
+  const filled = (weight: number | null, reps: number | null, done: boolean): SetRow => ({ id: '', weight, reps, done });
+
+  it('starts from the set before it, so repeating a set is one tap', () => {
+    const state: AppData = {
+      ...initialData,
+      activeExerciseId: 'x',
+      sessions: { [D]: { label: 'Push A', exercises: { x: [{ ...filled(60, 8, true), id: '1' }, { ...filled(62.5, 6, false), id: '2' }] } } },
+    };
+    const rows = reducer(state, { type: 'addSet', date: D }).sessions[D].exercises.x;
+    assert.equal(rows.length, 3);
+    assert.deepEqual([rows[2].weight, rows[2].reps, rows[2].done], [62.5, 6, false]); // copies the preceding row, unlogged
+    assert.equal(rows[2].warmup, undefined);
+    assert.equal(new Set(rows.map((r) => r.id)).size, 3);
+  });
+
+  it('leaves a new set blank when the one before it is blank, and works on an empty exercise', () => {
+    const blank: AppData = { ...initialData, activeExerciseId: 'x', sessions: { [D]: { label: 'x', exercises: { x: [{ ...filled(null, null, false), id: '1' }] } } } };
+    const rows = reducer(blank, { type: 'addSet', date: D }).sessions[D].exercises.x;
+    assert.deepEqual([rows[1].weight, rows[1].reps], [null, null]);
+    const none: AppData = { ...initialData, activeExerciseId: 'x', sessions: { [D]: { label: 'x', exercises: { x: [] } } } };
+    assert.equal(reducer(none, { type: 'addSet', date: D }).sessions[D].exercises.x.length, 1);
   });
 });

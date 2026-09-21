@@ -47,12 +47,13 @@ export const Caption = ({ children, className = '' }: { children: ReactNode; cla
 
 /* ── Buttons ── */
 
-type Variant = 'primary' | 'white' | 'secondary';
+type Variant = 'primary' | 'white' | 'secondary' | 'danger';
 
 const VARIANT: Record<Variant, { bg: string; text: string }> = {
   primary: { bg: 'bg-accent', text: 'text-black' },
   white: { bg: 'bg-label', text: 'text-black' },
   secondary: { bg: 'bg-fill', text: 'text-label' },
+  danger: { bg: 'bg-danger', text: 'text-white' },
 };
 
 interface PillButtonProps {

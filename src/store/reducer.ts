@@ -27,7 +27,9 @@ export type Action =
   | { type: 'setGoal'; exerciseId: string; goal: Goal | null }
   | { type: 'setPrefs'; prefs: Partial<Prefs> }
   | { type: 'setSetMeta'; date: string; rowId: string; meta: { warmup?: boolean; rpe?: number | null; note?: string } }
-  | { type: 'setExerciseNote'; date: string; exerciseId: string; note: string };
+  | { type: 'setExerciseNote'; date: string; exerciseId: string; note: string }
+  | { type: 'removeExercise'; date: string; exerciseId: string }
+  | { type: 'deselect' };
 
 export const initialData: AppData = EMPTY_APP_DATA;
 
@@ -93,7 +95,11 @@ export function reducer(state: AppData, action: Action): AppData {
     }
 
     case 'addSet':
-      return updateRows(state, action.date, (rows) => [...rows, newRow(rows)]);
+      return updateRows(state, action.date, (rows) => {
+        const last = rows[rows.length - 1];
+        // A new set starts from the set before it (weight and reps), so repeating it is one tap.
+        return [...rows, last ? { ...newRow(rows), weight: last.weight, reps: last.reps } : newRow(rows)];
+      });
 
     case 'removeSet':
       return updateRows(state, action.date, (rows) =>
@@ -168,6 +174,23 @@ export function reducer(state: AppData, action: Action): AppData {
       if (action.note.trim()) notes[action.exerciseId] = action.note;
       else delete notes[action.exerciseId];
       return { ...state, sessions: { ...state.sessions, [action.date]: { ...session, notes } } };
+    }
+
+    case 'deselect':
+      return state.activeExerciseId ? { ...state, activeExerciseId: null } : state;
+
+    case 'removeExercise': {
+      const session = state.sessions[action.date];
+      if (!session?.exercises[action.exerciseId]) return state;
+      const { [action.exerciseId]: _gone, ...exercises } = session.exercises;
+      const notes = session.notes ? { ...session.notes } : undefined;
+      if (notes) delete notes[action.exerciseId];
+      return {
+        ...state,
+        // Leaving it selected would make the store re-create empty rows for it.
+        activeExerciseId: state.activeExerciseId === action.exerciseId ? null : state.activeExerciseId,
+        sessions: { ...state.sessions, [action.date]: { ...session, exercises, ...(notes ? { notes } : {}) } },
+      };
     }
 
     case 'createExercise':

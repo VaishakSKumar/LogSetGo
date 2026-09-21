@@ -7,7 +7,7 @@ import { clearErrors, readErrors } from '../../lib/diagnostics';
 import { formatErrorReport } from '../../lib/errorlog';
 import { pickTextFile, saveTextFile } from '../../lib/files';
 import { haptic } from '../../lib/haptics';
-import { ensurePermission, notificationsSupported } from '../../lib/notify';
+import { ensurePermission, notificationsSupported, sendTestAlert } from '../../lib/notify';
 import { useAttendance } from '../../store/attendance';
 import { useBody } from '../../store/body';
 import { useGym } from '../../store/gym';
@@ -99,6 +99,13 @@ export function SettingsSheet({ visible, onClose }: { visible: boolean; onClose:
     }
     haptic.tap();
     controls.setReminderHour(on ? 18 : null);
+  };
+  const testAlert = async () => {
+    haptic.tap();
+    const result = await sendTestAlert(5);
+    if (result === 'sent') say('Test alert sent. Lock your phone now; it should buzz in about 5 seconds.');
+    else if (result === 'blocked') say('Notifications are blocked. Turn them on for LogSetGo in your phone’s Settings.', false);
+    else say('Couldn’t schedule the alert on this device.', false);
   };
   const stepHour = (d: number) => controls.setReminderHour(((settings.reminderHour ?? 18) + d + 24) % 24);
 
@@ -213,6 +220,9 @@ export function SettingsSheet({ visible, onClose }: { visible: boolean; onClose:
                 </HoldButton>
               </View>
             </View>
+          ) : null}
+          {notificationsSupported ? (
+            <PillButton compact label="Send test alert" onPress={testAlert} className="mt-2 self-start" />
           ) : null}
         </Section>
 

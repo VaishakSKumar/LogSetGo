@@ -45,6 +45,10 @@ export interface GymActions {
   /** Warm-up flag, RPE and note for a set of the selected exercise. */
   setSetMeta(rowId: string, meta: { warmup?: boolean; rpe?: number | null; note?: string }): void;
   setExerciseNote(exerciseId: string, note: string): void;
+  /** Deletes every set of one exercise from the day being logged. */
+  removeExercise(exerciseId: string): void;
+  /** Clears the selected exercise, so the entry panel starts from an empty search. */
+  deselectExercise(): void;
   /** Creates (or finds) a custom exercise by name and returns it. */
   createExercise(name: string, group?: MuscleGroup): Exercise;
 }
@@ -56,6 +60,8 @@ interface GymContextValue {
   today: string;
   /** The actual calendar date right now. */
   realToday: string;
+  /** Bumps whenever the user picks an exercise or starts a routine, so the screen can open its entry panel. */
+  selectionCount: number;
   exercises: Exercise[];
   byId: Map<string, Exercise>;
   history: Record<string, HistoryEntry[]>;
@@ -88,6 +94,7 @@ export function GymProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [realToday, setRealToday] = useState(() => dateKey());
   const [workDate, setWorkDateState] = useState<string | null>(null);
+  const [selectionCount, setSelectionCount] = useState(0);
   const today = workDate ?? realToday;
 
   const dataRef = useRef(data);
@@ -150,7 +157,10 @@ export function GymProvider({ children }: { children: ReactNode }) {
 
   const actions = useMemo<GymActions>(
     () => ({
-      selectExercise: (id) => dispatch({ type: 'select', id, date: todayRef.current }),
+      selectExercise: (id) => {
+        setSelectionCount((n) => n + 1);
+        dispatch({ type: 'select', id, date: todayRef.current });
+      },
       setField: (rowId, field, value) =>
         dispatch({ type: 'setField', date: todayRef.current, rowId, field, value }),
       toggleSet: (rowId, weight, reps) =>
@@ -164,11 +174,16 @@ export function GymProvider({ children }: { children: ReactNode }) {
       replaceAll: (data) => dispatch({ type: 'hydrate', data }),
       addRoutine: (routine) => dispatch({ type: 'addRoutine', routine }),
       deleteRoutine: (id) => dispatch({ type: 'deleteRoutine', id }),
-      startRoutine: (routine) => dispatch({ type: 'startRoutine', date: todayRef.current, routine }),
+      startRoutine: (routine) => {
+        setSelectionCount((n) => n + 1);
+        dispatch({ type: 'startRoutine', date: todayRef.current, routine });
+      },
       setGoal: (exerciseId, goal) => dispatch({ type: 'setGoal', exerciseId, goal }),
       setPrefs: (prefs) => dispatch({ type: 'setPrefs', prefs }),
       setSetMeta: (rowId, meta) => dispatch({ type: 'setSetMeta', date: todayRef.current, rowId, meta }),
       setExerciseNote: (exerciseId, note) => dispatch({ type: 'setExerciseNote', date: todayRef.current, exerciseId, note }),
+      removeExercise: (exerciseId) => dispatch({ type: 'removeExercise', date: todayRef.current, exerciseId }),
+      deselectExercise: () => dispatch({ type: 'deselect' }),
       createExercise: (name, group = 'Other') => {
         const id = slug(name);
         const existing = dataRef.current;
@@ -184,8 +199,8 @@ export function GymProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<GymContextValue>(
-    () => ({ ready, data, today, realToday, exercises, byId, history, recents, label, active, rows, actions }),
-    [ready, data, today, realToday, exercises, byId, history, recents, label, active, rows, actions],
+    () => ({ ready, data, today, realToday, selectionCount, exercises, byId, history, recents, label, active, rows, actions }),
+    [ready, data, today, realToday, selectionCount, exercises, byId, history, recents, label, active, rows, actions],
   );
 
   return <GymContext.Provider value={value}>{children}</GymContext.Provider>;

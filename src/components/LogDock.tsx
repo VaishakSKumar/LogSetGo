@@ -19,6 +19,8 @@ interface LogDockProps {
   onChange: (rowId: string, field: 'weight' | 'reps', value: number | null) => void;
   onLog: (rowId: string, weight: number, reps: number) => void;
   onAdd: () => void;
+  /** Just the ± steppers for the active set: no Log button and no bottom safe-area padding (the drawer footer supplies both). */
+  compact?: boolean;
 }
 
 function Stepper({ label, text, ghosted, onMinus, onPlus }: { label: string; text: string; ghosted: boolean; onMinus: () => void; onPlus: () => void }) {
@@ -41,7 +43,7 @@ function Stepper({ label, text, ghosted, onMinus, onPlus }: { label: string; tex
 }
 
 /** Thumb-zone dock: ± steppers for the active set, and the one big "Log set" button. */
-export function LogDock({ activeRow, activeIndex, ghost, unit, step, onChange, onLog, onAdd }: LogDockProps) {
+export function LogDock({ activeRow, activeIndex, ghost, unit, step, onChange, onLog, onAdd, compact = false }: LogDockProps) {
   const insets = useSafeAreaInsets();
   const resolved = activeRow && ghost ? resolveSet(activeRow, ghost) : null;
 
@@ -66,11 +68,13 @@ export function LogDock({ activeRow, activeIndex, ghost, unit, step, onChange, o
     if (activeRow.weight == null && ghost?.weight != null) onChange(activeRow.id, 'weight', ghost.weight);
   };
 
+  if (compact && !activeRow) return null;
+
   return (
-    <View className="px-4 pt-3" style={{ paddingBottom: Math.max(insets.bottom, 12) + 4 }}>
+    <View className="px-4 pt-3" style={{ paddingBottom: compact ? 0 : Math.max(insets.bottom, 12) + 4 }}>
       {activeRow ? (
         <>
-          <View className="mb-3 flex-row">
+          <View className={compact ? 'flex-row' : 'mb-3 flex-row'}>
             <Stepper
               label={unit}
               text={weightKg == null ? '–' : fmtWeight(weightKg, unit)}
@@ -86,13 +90,15 @@ export function LogDock({ activeRow, activeIndex, ghost, unit, step, onChange, o
               onPlus={() => stepReps(1)}
             />
           </View>
-          <PillButton
-            variant="primary"
-            label={`Log set ${activeIndex + 1}`}
-            detail={resolved ? `${fmtWeight(resolved.weight, unit)} ${unit} × ${resolved.reps}` : undefined}
-            disabled={!resolved}
-            onPress={() => resolved && activeRow && onLog(activeRow.id, resolved.weight, resolved.reps)}
-          />
+          {compact ? null : (
+            <PillButton
+              variant="primary"
+              label={`Log set ${activeIndex + 1}`}
+              detail={resolved ? `${fmtWeight(resolved.weight, unit)} ${unit} × ${resolved.reps}` : undefined}
+              disabled={!resolved}
+              onPress={() => resolved && activeRow && onLog(activeRow.id, resolved.weight, resolved.reps)}
+            />
+          )}
         </>
       ) : (
         <PillButton variant="white" label="Add another set" icon={<PlusIcon size={18} color="#000" />} onPress={onAdd} />
