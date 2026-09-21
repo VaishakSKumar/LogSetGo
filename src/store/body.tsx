@@ -32,6 +32,8 @@ interface BodyContextValue {
     addWeight(kg: number): boolean;
     deleteEntry(id: string): void;
     setHeight(cm: number, unit: HeightUnit): void;
+    /** Replaces the whole weight log and height (used by backup import). */
+    replaceAll(next: BodyData): void;
   };
 }
 
@@ -93,6 +95,7 @@ export function BodyProvider({ children }: { children: ReactNode }) {
           return true;
         },
         deleteEntry: (id) => setData((d) => ({ ...d, entries: d.entries.filter((e) => e.id !== id) })),
+        replaceAll: (next) => setData(next),
         setHeight: (cm, unit) => setData((d) => ({ ...d, heightCm: clampHeightCm(cm), heightUnit: unit })),
       },
     };

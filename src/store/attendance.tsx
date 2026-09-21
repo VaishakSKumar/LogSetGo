@@ -16,6 +16,8 @@ interface AttendanceContextValue {
   stats: AttendanceStats;
   /** Set a date's status, or `null` to clear your mark. */
   setStatus(date: string, status: Status | null): void;
+  /** Replaces every mark (used by backup import). */
+  replaceMarks(marks: Marks): void;
 }
 
 const AttendanceContext = createContext<AttendanceContextValue | null>(null);
@@ -81,6 +83,7 @@ export function AttendanceProvider({ children }: { children: ReactNode }) {
       marks,
       statuses,
       stats,
+      replaceMarks: (next) => setMarks(next),
       setStatus: (date, status) =>
         setMarks((m) => {
           const next = { ...m };

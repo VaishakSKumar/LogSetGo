@@ -6,7 +6,9 @@ import { BackHandler, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { RestBanner } from './src/components/RestBanner';
+import { SettingsSheet } from './src/components/sheets/SettingsSheet';
 import { TopTabBar, type TabKey } from './src/components/TopTabBar';
 import { BodyScreen } from './src/screens/BodyScreen';
 import { CalendarScreen } from './src/screens/CalendarScreen';
@@ -15,6 +17,7 @@ import { AttendanceProvider, useAttendance } from './src/store/attendance';
 import { BodyProvider, useBody } from './src/store/body';
 import { GymProvider, useGym } from './src/store/gym';
 import { TimerProvider, useTimer } from './src/store/timer';
+import { installGlobalHandlers } from './src/lib/diagnostics';
 import { registerServiceWorker } from './src/lib/pwa';
 import { colors, motion } from './src/theme';
 
@@ -57,6 +60,7 @@ function Root() {
   const { timer } = useTimer();
   const insets = useSafeAreaInsets();
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [tab, setTab] = useState<TabKey>('attendance');
   const [visited, setVisited] = useState<Record<TabKey, boolean>>({ attendance: true, gym: false, body: false });
 
@@ -88,7 +92,7 @@ function Root() {
 
   return (
     <View className="flex-1 bg-base">
-      <TopTabBar value={tab} onChange={goTo} />
+      <TopTabBar value={tab} onChange={goTo} onSettings={() => setSettingsOpen(true)} />
 
       <View className="flex-1">
         <Pane active={tab === 'attendance'} visited={visited.attendance}>
@@ -111,6 +115,8 @@ function Root() {
           </View>
         ) : null}
       </View>
+
+      <SettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </View>
   );
 }
@@ -119,20 +125,23 @@ export default function App() {
   // Web only: cache the app so it opens instantly and works offline once installed.
   useEffect(() => {
     registerServiceWorker();
+    installGlobalHandlers();
   }, []);
 
   return (
     <SafeAreaProvider>
-      <GymProvider>
-        <AttendanceProvider>
-          <BodyProvider>
-            <TimerProvider>
-              <StatusBar style="light" />
-              <Root />
-            </TimerProvider>
-          </BodyProvider>
-        </AttendanceProvider>
-      </GymProvider>
+      <ErrorBoundary>
+        <GymProvider>
+          <AttendanceProvider>
+            <BodyProvider>
+              <TimerProvider>
+                <StatusBar style="light" />
+                <Root />
+              </TimerProvider>
+            </BodyProvider>
+          </AttendanceProvider>
+        </GymProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

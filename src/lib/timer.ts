@@ -24,12 +24,18 @@ export interface TimerSettings {
   /** used by auto-start after a set is logged */
   defaultSeconds: number;
   autoStart: boolean;
+  /** buzz the phone when a rest ends, even if the app is closed (native apps only) */
+  alerts: boolean;
+  /** hour (0-23) for the daily reminder, or null for none */
+  reminderHour: number | null;
 }
 
 export const defaultTimerSettings: TimerSettings = {
   saved: [],
   defaultSeconds: DEFAULT_REST_SECONDS,
   autoStart: true,
+  alerts: false,
+  reminderHour: null,
 };
 
 /** Tolerant loader: anything malformed falls back to defaults rather than crashing on launch. */
@@ -48,6 +54,9 @@ export function parseTimerSettings(raw: string | null): TimerSettings {
       defaultSeconds:
         typeof p.defaultSeconds === 'number' && p.defaultSeconds > 0 ? p.defaultSeconds : DEFAULT_REST_SECONDS,
       autoStart: typeof p.autoStart === 'boolean' ? p.autoStart : true,
+      alerts: p.alerts === true,
+      reminderHour:
+        typeof p.reminderHour === 'number' && Number.isInteger(p.reminderHour) && p.reminderHour >= 0 && p.reminderHour <= 23 ? p.reminderHour : null,
     };
   } catch {
     return defaultTimerSettings;
@@ -127,3 +136,18 @@ export const isWarning = (s: TimerState, now: number) => {
 /** 1 → full, 0 → empty */
 export const progressOf = (s: TimerState, now: number) =>
   s.status === 'done' ? 0 : s.total > 0 ? Math.min(1, remainingMs(s, now) / s.total) : 0;
+
+/* ─────────────────────────── Background alert decision (pure) ─────────────────────────── */
+
+export type AlertPlan = { action: 'schedule'; seconds: number } | { action: 'cancel' };
+
+/**
+ * What the phone-level rest alert should do for the current timer. Only a running timer with alerts
+ * on schedules anything; pausing, skipping, finishing or turning alerts off cancels it. Adding time
+ * or resuming produces a fresh schedule from the new end time.
+ */
+export function restAlertPlan(s: TimerState, alertsOn: boolean, now: number): AlertPlan {
+  if (!alertsOn || s.status !== 'running') return { action: 'cancel' };
+  const seconds = Math.ceil(remainingMs(s, now) / 1000);
+  return seconds >= 1 ? { action: 'schedule', seconds } : { action: 'cancel' };
+}

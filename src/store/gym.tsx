@@ -11,11 +11,11 @@ import {
 } from 'react';
 import { AppState } from 'react-native';
 
-import { CATALOG, slug } from '../data/catalog';
+import { CATALOG, slug, splitOfGroup } from '../data/catalog';
 import { dateKey } from '../lib/dates';
 import { buildDemoData } from '../lib/demo';
 import { buildHistory, buildRecents, defaultLabelFor } from '../lib/progress';
-import type { AppData, Exercise, HistoryEntry, SetPerf, SetRow, Unit } from '../types';
+import type { AppData, Exercise, Goal, HistoryEntry, MuscleGroup, Prefs, Routine, SetPerf, SetRow, Unit } from '../types';
 import { normalizeAppData } from '../lib/appdata';
 import { initialData, reducer, type Field } from './reducer';
 
@@ -34,8 +34,19 @@ export interface GymActions {
   setUnit(unit: Unit): void;
   /** Which calendar date the workout screen is logging. `null` follows the real today. */
   setWorkDate(date: string | null): void;
+  /** Replaces everything (used by backup import). */
+  replaceAll(data: AppData): void;
+  addRoutine(routine: Routine): void;
+  deleteRoutine(id: string): void;
+  /** Loads a routine into the day being logged: rows for every exercise, first one selected. */
+  startRoutine(routine: Routine): void;
+  setGoal(exerciseId: string, goal: Goal | null): void;
+  setPrefs(prefs: Partial<Prefs>): void;
+  /** Warm-up flag, RPE and note for a set of the selected exercise. */
+  setSetMeta(rowId: string, meta: { warmup?: boolean; rpe?: number | null; note?: string }): void;
+  setExerciseNote(exerciseId: string, note: string): void;
   /** Creates (or finds) a custom exercise by name and returns it. */
-  createExercise(name: string): Exercise;
+  createExercise(name: string, group?: MuscleGroup): Exercise;
 }
 
 interface GymContextValue {
@@ -150,13 +161,21 @@ export function GymProvider({ children }: { children: ReactNode }) {
       setLabel: (label) => dispatch({ type: 'label', date: todayRef.current, label }),
       setUnit: (unit) => dispatch({ type: 'unit', unit }),
       setWorkDate: (date) => setWorkDateState(date),
-      createExercise: (name) => {
+      replaceAll: (data) => dispatch({ type: 'hydrate', data }),
+      addRoutine: (routine) => dispatch({ type: 'addRoutine', routine }),
+      deleteRoutine: (id) => dispatch({ type: 'deleteRoutine', id }),
+      startRoutine: (routine) => dispatch({ type: 'startRoutine', date: todayRef.current, routine }),
+      setGoal: (exerciseId, goal) => dispatch({ type: 'setGoal', exerciseId, goal }),
+      setPrefs: (prefs) => dispatch({ type: 'setPrefs', prefs }),
+      setSetMeta: (rowId, meta) => dispatch({ type: 'setSetMeta', date: todayRef.current, rowId, meta }),
+      setExerciseNote: (exerciseId, note) => dispatch({ type: 'setExerciseNote', date: todayRef.current, exerciseId, note }),
+      createExercise: (name, group = 'Other') => {
         const id = slug(name);
         const existing = dataRef.current;
         const found =
           existing.customExercises.find((e) => e.id === id) ?? CATALOG.find((e) => e.id === id);
         if (found) return found;
-        const exercise: Exercise = { id, name, group: 'Other', split: 'other', custom: true };
+        const exercise: Exercise = { id, name, group, split: splitOfGroup(group), custom: true };
         dispatch({ type: 'createExercise', exercise });
         return exercise;
       },

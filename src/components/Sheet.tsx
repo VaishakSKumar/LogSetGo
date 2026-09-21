@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -73,5 +73,20 @@ export function Sheet({ visible, onClose, title, children }: SheetProps) {
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+/** Scrollable content area for tall sheets. Keeps taps working while a keyboard is open. */
+export function SheetBody({ children }: { children: ReactNode }) {
+  const { height } = useWindowDimensions();
+  return (
+    <ScrollView
+      style={{ maxHeight: height * 0.62 }}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8 }}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      {children}
+    </ScrollView>
   );
 }

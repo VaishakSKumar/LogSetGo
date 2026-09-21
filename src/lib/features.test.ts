@@ -12,7 +12,8 @@ import { buildDemoData } from './demo';
 import { buildHistory, isLogged, suggestNext, weekTotals } from './progress';
 import { PLAN_EXERCISE_IDS, buildPlan, routineFromSession, type PlanDays } from './routines';
 import { e1rmSeries, goalProgress, muscleSplit, recordsList, weeklyBuckets, workoutSummary } from './stats';
-import { defaultTimerSettings } from './timer';
+import { MAX_ERRORS, pushError, type ErrorEntry } from './errorlog';
+import { addSeconds, defaultTimerSettings, finishTimer, idleTimer, parseTimerSettings, pauseTimer, restAlertPlan, resumeTimer, skipTimer, startTimer } from './timer';
 import { fmtWeight, roundDisplay } from './units';
 
 const TODAY = '2026-09-21'; // a Monday
@@ -344,5 +345,42 @@ describe('calculators', () => {
     const light = warmupSets(30, 20, 2.5); // close to the bar: no empty-bar set, no duplicates
     assert.equal(new Set(light.map((s) => s.weight)).size, light.length);
     assert.ok(light.every((s) => s.weight >= 20 && s.weight < 30));
+  });
+});
+
+describe('rest alerts and diagnostics', () => {
+  const T0 = 1_000_000;
+
+  it('schedules only for a running timer with alerts on, and reschedules from the new end time', () => {
+    const s = startTimer(idleTimer, 90, null, T0);
+    assert.deepEqual(restAlertPlan(s, true, T0), { action: 'schedule', seconds: 90 });
+    assert.deepEqual(restAlertPlan(s, true, T0 + 30_000), { action: 'schedule', seconds: 60 });
+    assert.deepEqual(restAlertPlan(s, false, T0), { action: 'cancel' }); // alerts off
+    assert.deepEqual(restAlertPlan(pauseTimer(s, T0 + 10_000), true, T0 + 10_000), { action: 'cancel' });
+    assert.deepEqual(restAlertPlan(skipTimer(s), true, T0), { action: 'cancel' });
+    assert.deepEqual(restAlertPlan(finishTimer(s, T0 + 90_000), true, T0 + 90_000), { action: 'cancel' });
+    // +15s moves the alert 15 seconds later
+    assert.deepEqual(restAlertPlan(addSeconds(s, 15, T0), true, T0), { action: 'schedule', seconds: 105 });
+    // resuming after a pause schedules only what's left
+    const resumed = resumeTimer(pauseTimer(s, T0 + 20_000), T0 + 100_000);
+    assert.deepEqual(restAlertPlan(resumed, true, T0 + 100_000), { action: 'schedule', seconds: 70 });
+  });
+
+  it('reads the new timer settings safely', () => {
+    const s = parseTimerSettings(JSON.stringify({ alerts: true, reminderHour: 18 }));
+    assert.deepEqual([s.alerts, s.reminderHour], [true, 18]);
+    for (const bad of [24, -1, 7.5, '9', null]) assert.equal(parseTimerSettings(JSON.stringify({ reminderHour: bad })).reminderHour, null);
+    assert.equal(parseTimerSettings(JSON.stringify({ alerts: 'yes' })).alerts, false);
+  });
+
+  it('error log keeps the newest 20, trims long text, and never grows unbounded', () => {
+    let list: ErrorEntry[] = [];
+    for (let i = 0; i < 30; i++) list = pushError(list, { at: i, message: `e${i}` });
+    assert.equal(list.length, MAX_ERRORS);
+    assert.equal(list[0].message, 'e29');
+    assert.equal(list[19].message, 'e10');
+    const big = pushError([], { at: 1, message: 'x'.repeat(5000), stack: 'y'.repeat(5000) });
+    assert.ok(big[0].message.length < 1600 && (big[0].stack ?? '').length < 1600);
+    assert.equal(pushError([], { at: 1, message: '' })[0].message, '');
   });
 });

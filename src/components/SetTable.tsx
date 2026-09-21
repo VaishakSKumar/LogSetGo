@@ -16,6 +16,7 @@ interface SetTableProps {
   onLog: (rowId: string, weight: number, reps: number) => void;
   onAdd: () => void;
   onRemove: () => void;
+  onDetails: (rowId: string) => void;
 }
 
 const Head = ({ children, className = '' }: { children: string; className?: string }) => (
@@ -23,7 +24,7 @@ const Head = ({ children, className = '' }: { children: string; className?: stri
 );
 
 /** Active-set card: SET | PREVIOUS | WEIGHT | REPS | ✓ */
-export function SetTable({ rows, ghosts, prevSets, unit, activeRowId, onChange, onLog, onAdd, onRemove }: SetTableProps) {
+export function SetTable({ rows, ghosts, prevSets, unit, activeRowId, onChange, onLog, onAdd, onRemove, onDetails }: SetTableProps) {
   const canRemove = rows.length > 1 && !rows[rows.length - 1].done;
 
   return (
@@ -48,6 +49,7 @@ export function SetTable({ rows, ghosts, prevSets, unit, activeRowId, onChange, 
             active={row.id === activeRowId}
             onChange={onChange}
             onLog={onLog}
+            onDetails={onDetails}
           />
         ))}
       </View>

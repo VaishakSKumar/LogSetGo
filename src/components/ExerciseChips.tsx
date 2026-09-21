@@ -14,7 +14,7 @@ export function ExerciseChips() {
     const session = data.sessions[today];
     const fromToday = session
       ? Object.entries(session.exercises)
-          .filter(([, rows]) => rows.some((r) => r.done))
+          .filter(([, rows]) => rows.length > 0)
           .map(([id]) => byId.get(id))
           .filter((e): e is Exercise => !!e)
       : [];
@@ -31,7 +31,9 @@ export function ExerciseChips() {
     <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" className="-mx-4" contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
       {chips.map((ex) => {
         const selected = ex.id === active?.id;
-        const done = data.sessions[today]?.exercises[ex.id]?.filter((r) => r.done).length ?? 0;
+        const todayRows = data.sessions[today]?.exercises[ex.id] ?? [];
+        const done = todayRows.filter((r) => r.done).length;
+        const count = todayRows.length > done && done > 0 ? `${done}/${todayRows.length}` : done > 0 ? String(done) : null;
         return (
           <Pressable
             key={ex.id}
@@ -46,7 +48,7 @@ export function ExerciseChips() {
             <Text className={`text-body font-medium ${selected ? 'text-black' : 'text-label'}`} numberOfLines={1}>
               {ex.name}
             </Text>
-            {done > 0 ? <Text className={`text-caption tabular-nums ${selected ? 'text-black/60' : 'text-muted'}`}>{done}</Text> : null}
+            {count ? <Text className={`text-caption tabular-nums ${selected ? 'text-black/60' : 'text-muted'}`}>{count}</Text> : null}
           </Pressable>
         );
       })}

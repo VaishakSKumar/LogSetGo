@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { haptic } from '../lib/haptics';
 import { colors, motion } from '../theme';
+import { SlidersIcon } from './Icons';
 
 export type TabKey = 'attendance' | 'gym' | 'body';
 
@@ -21,7 +22,7 @@ const BAR_HEIGHT = 44;
  * Top-level navigation: a segmented control pinned under the status bar on every screen.
  * The highlight slides between tabs in 250ms.
  */
-export function TopTabBar({ value, onChange }: { value: TabKey; onChange: (tab: TabKey) => void }) {
+export function TopTabBar({ value, onChange, onSettings }: { value: TabKey; onChange: (tab: TabKey) => void; onSettings: () => void }) {
   const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
   const index = TABS.findIndex((t) => t.key === value);
@@ -35,11 +36,11 @@ export function TopTabBar({ value, onChange }: { value: TabKey; onChange: (tab: 
   const highlight = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
 
   return (
-    <View className="bg-base px-4 pb-2" style={{ paddingTop: insets.top + 8 }}>
+    <View className="flex-row items-center gap-2 bg-base px-4 pb-2" style={{ paddingTop: insets.top + 8 }}>
       <View
         accessibilityRole="tablist"
         onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
-        className="flex-row rounded-full border border-line bg-surface"
+        className="flex-1 flex-row rounded-full border border-line bg-surface"
         style={{ height: BAR_HEIGHT, padding: PAD, borderColor: colors.line }}
       >
         {width > 0 ? (
@@ -76,6 +77,19 @@ export function TopTabBar({ value, onChange }: { value: TabKey; onChange: (tab: 
           );
         })}
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Settings"
+        onPress={() => {
+          haptic.tap();
+          onSettings();
+        }}
+        className="h-11 w-11 items-center justify-center rounded-full border border-line bg-surface active:opacity-60"
+        style={{ borderColor: colors.line }}
+      >
+        <SlidersIcon />
+      </Pressable>
     </View>
   );
 }

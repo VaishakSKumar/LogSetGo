@@ -13,6 +13,7 @@ import {
 import { AppState } from 'react-native';
 
 import { haptic } from '../lib/haptics';
+import { cancelRestAlert, scheduleRestAlert, setDailyReminder } from '../lib/notify';
 import {
   MAX_SAVED,
   addSeconds,
@@ -22,6 +23,7 @@ import {
   parseTimerSettings,
   pauseTimer,
   remainingMs,
+  restAlertPlan,
   resumeTimer,
   skipTimer,
   startTimer,
@@ -47,6 +49,10 @@ export interface TimerControls {
   deleteTimer(id: string): void;
   setDefaultSeconds(seconds: number): void;
   setAutoStart(on: boolean): void;
+  setAlerts(on: boolean): void;
+  setReminderHour(hour: number | null): void;
+  /** Replaces saved timers and preferences (used by backup import). */
+  replaceSettings(next: TimerSettings): void;
 }
 
 interface TimerContextValue {
@@ -116,6 +122,19 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     return () => sub.remove();
   }, []);
 
+  // Phone-level alert for when a rest ends with the app closed (iOS / Android apps only).
+  useEffect(() => {
+    if (!loaded) return;
+    const plan = restAlertPlan(timer, settings.alerts, Date.now());
+    if (plan.action === 'schedule') void scheduleRestAlert(plan.seconds, timer.label);
+    else void cancelRestAlert();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timer.status, timer.endsAt, timer.runId, settings.alerts, loaded]);
+
+  useEffect(() => {
+    if (loaded) void setDailyReminder(settings.reminderHour);
+  }, [settings.reminderHour, loaded]);
+
   // A finished timer clears itself.
   useEffect(() => {
     if (timer.status !== 'done') return;
@@ -169,6 +188,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       deleteTimer: (id) => setSettings((s) => ({ ...s, saved: s.saved.filter((t) => t.id !== id) })),
       setDefaultSeconds: (seconds) => setSettings((s) => ({ ...s, defaultSeconds: seconds })),
       setAutoStart: (on) => setSettings((s) => ({ ...s, autoStart: on })),
+      setAlerts: (on) => setSettings((s) => ({ ...s, alerts: on })),
+      setReminderHour: (hour) => setSettings((s) => ({ ...s, reminderHour: hour })),
+      replaceSettings: (next) => setSettings(next),
     }),
     [start],
   );

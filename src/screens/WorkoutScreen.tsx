@@ -3,6 +3,13 @@ import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ExerciseChips } from '../components/ExerciseChips';
+import { ExerciseGoalCard } from '../components/ExerciseGoalCard';
+import { QuickActions, type QuickSheet } from '../components/QuickActions';
+import { RoutinesSheet } from '../components/sheets/RoutinesSheet';
+import { SetDetailsSheet } from '../components/sheets/SetDetailsSheet';
+import { StatsSheet } from '../components/sheets/StatsSheet';
+import { SummarySheet } from '../components/sheets/SummarySheet';
+import { ToolsSheet } from '../components/sheets/ToolsSheet';
 import { ExerciseInsights } from '../components/ExerciseInsights';
 import { ExerciseSearch } from '../components/ExerciseSearch';
 import { Header } from '../components/Header';
@@ -26,6 +33,8 @@ export function WorkoutScreen() {
   const insets = useSafeAreaInsets();
   const [searchOpen, setSearchOpen] = useState(false);
   const [stackHeight, setStackHeight] = useState(0);
+  const [sheet, setSheet] = useState<QuickSheet | null>(null);
+  const [detailsId, setDetailsId] = useState<string | null>(null);
 
   const entries = active ? history[active.id] : undefined;
   const prevSets = useMemo(() => previousEntry(entries, today)?.sets, [entries, today]);
@@ -62,6 +71,7 @@ export function WorkoutScreen() {
         {!searchOpen ? (
           <>
             <ExerciseChips />
+            <QuickActions onOpen={setSheet} />
 
             {active ? (
               <>
@@ -75,9 +85,11 @@ export function WorkoutScreen() {
                   onLog={logSet}
                   onAdd={actions.addSet}
                   onRemove={actions.removeSet}
+                  onDetails={setDetailsId}
                 />
                 <TimerDashboard />
-                <ExerciseInsights exercise={active} entries={entries} rows={rows} today={today} unit={data.unit} onApply={actions.fillSets} />
+                <ExerciseInsights exercise={active} entries={entries} rows={rows} today={today} unit={data.unit} step={data.unit === 'kg' ? data.prefs.stepKg : data.prefs.stepLb} onApply={actions.fillSets} />
+                <ExerciseGoalCard exercise={active} entries={entries} />
               </>
             ) : (
               <>
@@ -122,6 +134,17 @@ export function WorkoutScreen() {
           ) : null}
         </View>
       ) : null}
+
+      <RoutinesSheet visible={sheet === 'routines'} onClose={() => setSheet(null)} />
+      <StatsSheet visible={sheet === 'stats'} onClose={() => setSheet(null)} />
+      <ToolsSheet visible={sheet === 'tools'} onClose={() => setSheet(null)} />
+      <SummarySheet visible={sheet === 'summary'} onClose={() => setSheet(null)} />
+      <SetDetailsSheet
+        visible={detailsId != null}
+        onClose={() => setDetailsId(null)}
+        row={rows.find((r) => r.id === detailsId)}
+        index={Math.max(0, rows.findIndex((r) => r.id === detailsId))}
+      />
     </KeyboardAvoidingView>
   );
 }

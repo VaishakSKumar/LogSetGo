@@ -72,3 +72,7 @@ export const CATALOG: Exercise[] = SEEDS.map(([name, group, split, aliases]) => 
   split,
   aliases,
 }));
+
+/** Which training split a muscle group belongs to (used to suggest exercises for "Push A", "Legs B", …). */
+export const splitOfGroup = (group: MuscleGroup): Split =>
+  group === 'Chest' || group === 'Shoulders' ? 'push' : group === 'Back' ? 'pull' : group === 'Legs' ? 'legs' : 'other';

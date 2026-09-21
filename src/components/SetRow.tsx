@@ -158,6 +158,7 @@ interface SetRowProps {
   active: boolean;
   onChange: (rowId: string, field: 'weight' | 'reps', value: number | null) => void;
   onLog: (rowId: string, weight: number, reps: number) => void;
+  onDetails: (rowId: string) => void;
 }
 
 /** What changed vs the same set last session — shown under "Previous" once a set is logged. */
@@ -171,7 +172,7 @@ function deltaOf(row: SetRowData, prev: SetPerf | undefined, unit: Unit): { text
   return null;
 }
 
-function SetRowView({ index, row, prev, ghost, unit, active, onChange, onLog }: SetRowProps) {
+function SetRowView({ index, row, prev, ghost, unit, active, onChange, onLog, onDetails }: SetRowProps) {
   const glow = useSharedValue(0);
   const pop = useSharedValue(1);
   const shake = useSharedValue(0);
@@ -229,11 +230,21 @@ function SetRowView({ index, row, prev, ghost, unit, active, onChange, onLog }: 
           borderColor: active && !done ? colors.accentBorder : colors.glassBorder,
         }}
       >
-        <View className={COL.set}>
-          <Text className="text-body tabular-nums" style={{ color: active && !done ? colors.accent : colors.muted, fontWeight: active && !done ? '700' : '500' }}>
-            {index + 1}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Set ${index + 1} details: ${row.warmup ? 'warm-up' : 'working set'}${row.rpe ? `, RPE ${row.rpe}` : ''}${row.note ? ', has a note' : ''}`}
+          onPress={() => {
+            haptic.tap();
+            onDetails(row.id);
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+          className={`${COL.set} h-11 justify-center active:opacity-60`}
+        >
+          <Text className="text-body tabular-nums" style={{ color: row.warmup ? colors.warn : active && !done ? colors.accent : colors.muted, fontWeight: active && !done ? '700' : '500' }}>
+            {row.warmup ? 'W' : index + 1}
           </Text>
-        </View>
+          {row.rpe || row.note ? <View style={{ position: 'absolute', top: 6, right: 2, width: 5, height: 5, borderRadius: 3, backgroundColor: colors.muted }} /> : null}
+        </Pressable>
 
         <View className={`${COL.previous} justify-center`}>
           <Text className="text-body tabular-nums text-muted/70" numberOfLines={1}>

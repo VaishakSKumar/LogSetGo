@@ -17,6 +17,8 @@ interface Props {
   rows: SetRow[];
   today: string;
   unit: Unit;
+  /** size of one plate jump in the display unit (from Settings) */
+  step: number;
   onApply: (sets: { weight: number; reps: number }[]) => void;
 }
 
@@ -29,12 +31,12 @@ const Stat = ({ label, value, sub }: { label: string; value: string; sub?: strin
 );
 
 /** Everything you've ever logged for this lift, plus what to try today. */
-export function ExerciseInsights({ exercise, entries, rows, today, unit, onApply }: Props) {
+export function ExerciseInsights({ exercise, entries, rows, today, unit, step, onApply }: Props) {
   const [showHistory, setShowHistory] = useState(false);
 
   const prev = previousEntry(entries, today);
   const bests = useMemo(() => bestsOf(entries), [entries]);
-  const suggestion = useMemo(() => (prev ? suggestNext(prev.sets, unit) : null), [prev, unit]);
+  const suggestion = useMemo(() => (prev ? suggestNext(prev.sets, unit, step) : null), [prev, unit, step]);
   const allDone = rows.length > 0 && rows.every((r) => r.done);
 
   const chronological = useMemo(() => [...(entries ?? [])].reverse(), [entries]);

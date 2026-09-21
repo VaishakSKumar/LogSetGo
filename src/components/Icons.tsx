@@ -88,3 +88,11 @@ export const ChevronRightIcon = ({ size = 18, color = '#fff', stroke = 2.6 }: Ic
     <Path d="M9 5l7 7-7 7" {...line(color, stroke)} />
   </Svg>
 );
+
+export const SlidersIcon = ({ size = 20, color = '#fff', stroke = 2.2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M4 7h9M17 7h3M4 17h3M11 17h9" {...line(color, stroke)} />
+    <Circle cx={15} cy={7} r={2.2} {...line(color, stroke)} />
+    <Circle cx={9} cy={17} r={2.2} {...line(color, stroke)} />
+  </Svg>
+);

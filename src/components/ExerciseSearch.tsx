@@ -10,8 +10,10 @@ import { browseExercises } from '../lib/suggest';
 import { fmtWeight } from '../lib/units';
 import { useGym } from '../store/gym';
 import { colors, motion } from '../theme';
-import type { Exercise } from '../types';
+import type { Exercise, MuscleGroup } from '../types';
 import { CloseIcon, PlusIcon, SearchIcon } from './Icons';
+
+const GROUPS: MuscleGroup[] = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Other'];
 
 const INPUT_FONT = { fontSize: 17, letterSpacing: -0.2, fontWeight: '400' } as const;
 
@@ -35,6 +37,8 @@ function Name({ name, query }: { name: string; query: string }) {
 export function ExerciseSearch({ open, onOpenChange }: Props) {
   const { exercises, recents, history, active, label, today, data, actions } = useGym();
   const [query, setQuery] = useState('');
+  /** name waiting for a muscle group (custom exercise being created) */
+  const [pendingName, setPendingName] = useState<string | null>(null);
 
   const recencyRank = useMemo(() => new Map(recents.map((r, i) => [r.id, i])), [recents]);
   const lastDate = useMemo(() => new Map(recents.map((r) => [r.id, r.lastDate])), [recents]);
@@ -47,6 +51,7 @@ export function ExerciseSearch({ open, onOpenChange }: Props) {
   const setsToday = (id: string) => data.sessions[today]?.exercises[id]?.filter((r) => r.done).length ?? 0;
 
   const close = () => {
+    setPendingName(null);
     setQuery('');
     onOpenChange(false);
     Keyboard.dismiss();
@@ -58,8 +63,10 @@ export function ExerciseSearch({ open, onOpenChange }: Props) {
     close();
   };
 
-  const create = () => {
-    const ex = actions.createExercise(tidyName(query));
+  const create = () => setPendingName(tidyName(query));
+  const createWithGroup = (group: MuscleGroup) => {
+    const ex = actions.createExercise(pendingName ?? tidyName(query), group);
+    setPendingName(null);
     choose(ex);
   };
 
@@ -169,7 +176,24 @@ export function ExerciseSearch({ open, onOpenChange }: Props) {
             paddingBottom: 4,
           }}
         >
-          {query.trim() ? (
+          {pendingName ? (
+            <View className="p-4">
+              <Text className="text-h2 text-label">Which muscle group is “{pendingName}”?</Text>
+              <Text className="mb-3 mt-1 text-caption text-muted/70">Used for your muscle-balance stats and day suggestions.</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {GROUPS.map((g) => (
+                  <Pressable
+                    key={g}
+                    accessibilityRole="button"
+                    onPress={() => createWithGroup(g)}
+                    className="h-11 items-center justify-center rounded-full bg-fill px-4 active:opacity-70"
+                  >
+                    <Text className="text-body font-medium text-label">{g}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : query.trim() ? (
             <>
               {results.map((ex, i) => renderRow(ex, i === 0))}
               {canCreate ? (
