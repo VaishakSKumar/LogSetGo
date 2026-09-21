@@ -6,6 +6,7 @@ import { initialData, reducer } from '../store/reducer';
 import { DEFAULT_PREFS, type AppData, type HistoryEntry, type SetRow } from '../types';
 import { EMPTY_APP_DATA, mergeAppData, normalizeAppData } from './appdata';
 import { backupFileName, buildBackup, describeBackup, mergeBackups, parseBackup, setsToCsv, weightsToCsv } from './backup';
+import { canLog, resolveStatuses } from './attendance';
 import { emptyBody } from './body';
 import { DEFAULT_BAR, oneRepMax, percentTable, platesPerSide, PLATES, warmupSets } from './calc';
 import { buildDemoData } from './demo';
@@ -391,5 +392,17 @@ describe('rest alerts and diagnostics', () => {
     const big = pushError([], { at: 1, message: 'x'.repeat(5000), stack: 'y'.repeat(5000) });
     assert.ok(big[0].message.length < 1600 && (big[0].stack ?? '').length < 1600);
     assert.equal(pushError([], { at: 1, message: '' })[0].message, '');
+  });
+});
+
+describe('Gym Progress gate', () => {
+  it('opens only for a Present day (tapped, or derived from logged sets)', () => {
+    const map = { '2026-09-21': 'present', '2026-09-20': 'absent', '2026-09-19': 'holiday' } as const;
+    assert.equal(canLog(map, '2026-09-21'), true);
+    assert.equal(canLog(map, '2026-09-20'), false);
+    assert.equal(canLog(map, '2026-09-19'), false);
+    assert.equal(canLog(map, '2026-09-18'), false); // unmarked
+    const derived = resolveStatuses({}, { '2026-09-17': { exercises: { x: [{ id: 'r', weight: 50, reps: 5, done: true }] } } } as never);
+    assert.equal(canLog(derived, '2026-09-17'), true);
   });
 });

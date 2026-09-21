@@ -93,3 +93,6 @@ export function attendanceStats(map: StatusMap, todayKey: string): AttendanceSta
 }
 
 export const isFuture = (date: string, todayKey: string) => date > todayKey;
+
+/** Gym Progress is open only for a date that resolves to Present (tapped, or derived from logged sets). */
+export const canLog = (map: StatusMap, date: string) => map[date] === 'present';

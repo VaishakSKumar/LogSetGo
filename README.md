@@ -38,7 +38,7 @@ A three-tab bar sits at the top of every screen:
 | Tab | Contents |
 |---|---|
 | **Attendance** | Calendar, P / A / H status, showing-up stats, daily-flow routing. The app opens here. |
-| **Gym Progress** | Exercise logger, set/rep counter, autofill box, rest timer. |
+| **Gym Progress** | Exercise logger, set/rep counter, autofill box, rest timer. **Open only when the date is Present**; otherwise it shows a lock screen with a button to Attendance. |
 | **BMI & Weight** | Weight log, height, BMI gauge, progress trend. |
 
 Tabs mount when first opened and then stay alive, so scroll position, the calendar month and an open search survive switching. A running rest timer stays docked on every tab. On Android, the back button returns to Attendance before it exits the app.
@@ -89,6 +89,7 @@ The app opens on a calendar. Tap any date and pick a status:
 - **Summary card:** days showed up, current streak, and attendance rate. It recomputes instantly.
 - **Rate** = present ÷ (present + absent). Holidays are excused and left out of the denominator. To count them instead, flip `COUNT_HOLIDAYS_IN_RATE` in `src/lib/attendance.ts`.
 - **Streak** = consecutive present days ending today. A Holiday pauses it, and an Absent or an unmarked past day breaks it. Today only counts once it's Present, and it doesn't break the streak while it's still unmarked.
+- **Gym Progress is gated by Present.** The logger opens only when the date you're logging is Present. Unmarked, Absent and Holiday dates show a lock screen. Marking a past date Present unlocks it for back-filling. If you mark a day Absent after logging on it, the logger closes but nothing is deleted; mark it Present again to get back in.
 - **Derived presence:** a day with logged sets shows as Present even if you never tapped it, so training history is never invisible. Your explicit mark always wins.
 - **Future dates** can only be marked Holiday.
 - **Back-filling:** you can open a past date's workout to log it. Rest-timer auto-start only fires when logging today.

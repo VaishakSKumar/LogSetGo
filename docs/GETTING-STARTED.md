@@ -126,6 +126,7 @@ Leave `EXPO_BASE_URL` off (and `--base`) to build for a site served from the roo
 #### Limits of the web version (tell friends)
 
 - **No haptic vibration.** The buzz at 0:00 on the rest timer is silent on the web.
+- **No notifications.** The "Rest-over alert" and daily-reminder switches in Settings only work in the real Android / iPhone app (Routes B–D). A web page can't wake a closed phone without a push server.
 - **The screen may lock** during a rest countdown.
 - **Data lives in that browser only.** iPhone Safari can erase saved data for sites unused for about a week, unless the app was added to the Home Screen (installed apps are exempt). Clearing browser data erases it.
 - **Updates need a connection** once: the app checks for a newer version when opened online and switches over the next time it's opened.

@@ -7,7 +7,9 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { PresenceGate } from './src/components/PresenceGate';
 import { RestBanner } from './src/components/RestBanner';
+import { canLog } from './src/lib/attendance';
 import { SettingsSheet } from './src/components/sheets/SettingsSheet';
 import { TopTabBar, type TabKey } from './src/components/TopTabBar';
 import { BodyScreen } from './src/screens/BodyScreen';
@@ -54,8 +56,8 @@ function Pane({ active, visited, children }: { active: boolean; visited: boolean
  *  · BMI & Weight: weight log, height, BMI gauge, progress.
  */
 function Root() {
-  const { ready: gymReady, actions } = useGym();
-  const { ready: attendanceReady } = useAttendance();
+  const { ready: gymReady, actions, today } = useGym();
+  const { ready: attendanceReady, statuses } = useAttendance();
   const { ready: bodyReady } = useBody();
   const { timer } = useTimer();
   const insets = useSafeAreaInsets();
@@ -99,14 +101,16 @@ function Root() {
           <CalendarScreen onOpenWorkout={openWorkout} />
         </Pane>
         <Pane active={tab === 'gym'} visited={visited.gym}>
-          <WorkoutScreen />
+          <PresenceGate onOpenAttendance={() => goTo('attendance')}>
+            <WorkoutScreen />
+          </PresenceGate>
         </Pane>
         <Pane active={tab === 'body'} visited={visited.body}>
           <BodyScreen />
         </Pane>
 
-        {/* A running rest timer stays visible on the other tabs. Gym Progress docks its own. */}
-        {tab !== 'gym' && timer.status !== 'idle' ? (
+        {/* A running rest timer stays visible on the other tabs. Gym Progress docks its own, unless it is locked. */}
+        {(tab !== 'gym' || !canLog(statuses, today)) && timer.status !== 'idle' ? (
           <View
             className="absolute bottom-0 left-0 right-0 border-t bg-base px-4 pt-3"
             style={{ borderTopColor: colors.line, paddingBottom: Math.max(insets.bottom, 12) + 4 }}
