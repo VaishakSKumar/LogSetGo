@@ -136,7 +136,7 @@ Not covered: real-device haptics, Android keyboard handling, and iOS `ui-rounded
 
 ```yaml
 # .maestro/uat-user-flow.yaml
-appId: app.minimalist.gymtracker
+appId: com.vaishakskumar.logsetgo
 ---
 - launchApp
 - assertVisible: "Attendance"

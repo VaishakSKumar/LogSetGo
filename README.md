@@ -12,6 +12,8 @@ npm test                # logic tests (search, autofill, overload, weekly maths,
 npm run typecheck
 ```
 
+**New here?** See [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) for install steps and how to share the app with friends on iPhone and Android.
+
 **Try it with history:** create `.env.local` containing `EXPO_PUBLIC_DEMO=1`. On first launch (nothing stored yet) it seeds five weeks of push/pull/legs sessions. Delete the file to start clean.
 
 ## What you get
