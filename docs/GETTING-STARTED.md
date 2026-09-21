@@ -69,12 +69,12 @@ npm run icons
 
 | Route | iPhone | Android | Cost | Friend's effort | You need |
 |---|---|---|---|---|---|
-| **A. Web link** | yes | yes | free | open link, "Add to Home Screen" | a free host (Netlify / Vercel / Cloudflare Pages) |
+| **A. Web app link** | yes | yes | free | open link, "Add to Home Screen" | GitHub Pages switched on (1 minute, already set up) |
 | **B. Android APK** | no | yes | free | tap link, install | free Expo account |
 | **C. iPhone via TestFlight** | yes | no | Apple Developer Program, about $99 / year | install TestFlight, accept invite | Apple developer account |
 | **D. iPhone ad-hoc build** | yes | no | same $99 / year | register phone, install from link | Apple developer account |
 
-**Recommended:** start with **A** for everyone today, add **B** for Android friends who want a real app, and add **C** only if you're happy paying for iPhone friends.
+**Recommended:** start with **A** for everyone today (it's already built), add **B** for Android friends who want a real app, and add **C** only if you're happy paying for iPhone friends.
 
 There is **no free way to put a real native app on someone else's iPhone**. That is Apple's rule, not a limit of this project. Route A is the free iPhone answer.
 
@@ -84,24 +84,49 @@ LogSetGo stores everything on the device it runs on. There is no account or serv
 
 ---
 
-### Route A: web link (iPhone + Android, free, ~10 minutes)
+### Route A: web app link (iPhone + Android, free)
 
-1. Build the site:
-   ```bash
-   npx expo export --platform web
-   ```
-   This creates a `dist/` folder.
-2. Put `dist/` online. Easiest: sign up for a free Netlify account and drag the `dist` folder onto **https://app.netlify.com/drop**. (Anonymous drops are temporary, so use an account to keep the link.) Vercel and Cloudflare Pages also work: set the build command to `npx expo export --platform web` and the output folder to `dist`.
-3. Netlify gives you a link. Send it to friends.
-4. Friends install it to their home screen:
-   - **iPhone (Safari only):** open the link → Share button → **Add to Home Screen**.
-   - **Android (Chrome):** open the link → ⋮ menu → **Install app** / **Add to Home screen**.
+LogSetGo's web version is an **installable web app (PWA)**: friends open a link, add it to their home screen, and it opens full-screen with its own icon, and keeps working with no internet after the first load.
 
-**Limits of the web version (be honest with friends):**
-- No haptic vibration; the rest timer buzz at 0:00 is silent.
-- The phone screen may lock during a rest countdown.
-- iPhone Safari can clear saved data for sites unused for about a week, unless the app was added to the Home Screen.
-- It is a plain website today: no offline mode, and the Home Screen icon and full-screen look are basic. Turning it into a proper installable PWA (manifest, icons, offline) is a small follow-up job.
+**Your link:** `https://vaishakskumar.github.io/LogSetGo/`
+
+#### One-time setup: switch on GitHub Pages (about 1 minute)
+
+The repo already contains an automatic publisher (`.github/workflows/deploy-web.yml`). GitHub just needs to be told to use it:
+
+1. Open your repo on GitHub → **Settings** → **Pages** (left sidebar).
+2. Under **Build and deployment → Source**, choose **GitHub Actions**.
+3. Go to the **Actions** tab. If the latest "Deploy web app" run failed (it does until step 2 is done), open it and click **Re-run all jobs**.
+4. When it turns green (a few minutes), your link is live.
+
+From then on, **every push to `main` republishes the site automatically** after type-checking and running the tests. Friends get updates the next time they open the app while online.
+
+#### What friends do
+
+- **iPhone (must be Safari):** open the link → **Share** button → **Add to Home Screen** → **Add**.
+- **Android (Chrome):** open the link → tap **Install** on the prompt, or ⋮ menu → **Install app**.
+
+That's it. There is no account, no store, and no download.
+
+#### Try it locally first (optional)
+
+```bash
+EXPO_BASE_URL=LogSetGo npm run build:web        # builds ./dist exactly like the publisher does
+npm run preview:web -- --base=LogSetGo          # http://localhost:5000/LogSetGo/
+```
+
+Leave `EXPO_BASE_URL` off (and `--base`) to build for a site served from the root of its own domain.
+
+#### Other hosts
+
+`npm run build:web` produces a plain `dist/` folder. Any static host works: Netlify (drag `dist` onto app.netlify.com/drop with a free account), Vercel, Cloudflare Pages. Build without `EXPO_BASE_URL` when the site lives at the domain root.
+
+#### Limits of the web version (tell friends)
+
+- **No haptic vibration.** The buzz at 0:00 on the rest timer is silent on the web.
+- **The screen may lock** during a rest countdown.
+- **Data lives in that browser only.** iPhone Safari can erase saved data for sites unused for about a week, unless the app was added to the Home Screen (installed apps are exempt). Clearing browser data erases it.
+- **Updates need a connection** once: the app checks for a newer version when opened online and switches over the next time it's opened.
 
 ---
 

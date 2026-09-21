@@ -28,13 +28,13 @@ An automated quality gate. Run it before committing, opening a PR, or deploying.
 | 1 Unit | Pure logic + types | **Live** | `npm run qa:types` and `npm run qa:unit` |
 | 2 Integration | Screen-level component behavior | NOT CONFIGURED | needs Jest + RNTL (see below) |
 | 3 System | Whole flows + persistence | Partial: reducer/store flows are in Tier 1 tests; UI flows are a manual/agent check | see Tier 3 |
-| 4 SIT | Compiles as a real native app; bridges fail safe | **Live** (bundle check) | `npm run qa:bundle` |
+| 4 SIT | Compiles as real native apps and an installable web app; bridges fail safe | **Live** (bundle + web build) | `npm run qa:bundle` and `npm run qa:web` |
 | 5 UAT | End-to-end journey + design bar | NOT CONFIGURED (Maestro); manual checklist available | see Tier 5 |
 
 **Master command** (the live tiers):
 
 ```bash
-npm run qa:gate      # qa:types -> qa:unit -> qa:bundle; exit code 0 = live tiers pass
+npm run qa:gate      # qa:types -> qa:unit -> qa:bundle -> qa:web; exit code 0 = live tiers pass
 ```
 
 `qa:gate` passing certifies **only** the live tiers. Say so; do not describe the change as "fully QA'd".
@@ -119,11 +119,13 @@ Report Tier 3 as *"unit-level flows covered; UI flows verified manually"* or *"n
 
 ```bash
 npm run qa:bundle   # expo export for ios + android (Hermes), then cleans up
+npm run qa:web      # PWA build: manifest, icons, service worker precache, sanity checks
 ```
 
 **Audit checklist**
 
 * [ ] Both platform bundles build (this catches native-only import/syntax issues the web preview hides).
+* [ ] The web build succeeds and its own checks pass (manifest, all icons, JS bundle, service worker version filled in).
 * [ ] Every native module call is guarded: `expo-haptics` and `Vibration` go through `src/lib/haptics.ts` (web no-op, `try/catch`); keep-awake and AsyncStorage calls `.catch(() => {})`.
 * [ ] No new dependency was added without `npx expo install` (SDK-compatible versions).
 * [ ] Layout respects safe areas: top inset handled once by `TopTabBar`, bottom inset by docks and scroll padding.
@@ -167,7 +169,8 @@ Scripts already in `package.json`:
 "qa:types":  "tsc --noEmit",
 "qa:unit":   "npm test",
 "qa:bundle": "node scripts/qa-bundle.js",
-"qa:gate":   "npm run qa:types && npm run qa:unit && npm run qa:bundle"
+"qa:web":    "node scripts/build-web.js",
+"qa:gate":   "npm run qa:types && npm run qa:unit && npm run qa:bundle && npm run qa:web"
 ```
 
 When Tiers 2 / 3 / 5 are set up, add `qa:integration`, `qa:system`, `qa:uat` and extend `qa:gate` in tier order.
@@ -175,6 +178,6 @@ When Tiers 2 / 3 / 5 are set up, add `qa:integration`, `qa:system`, `qa:uat` and
 ## Execution protocol
 
 1. Run `npm run qa:gate`.
-2. **Exit 0:** report *"Live tiers pass (types, unit, iOS + Android bundle)"*, then list each unconfigured or manual tier by name with its status. The change may be committed.
+2. **Exit 0:** report *"Live tiers pass (types, unit, iOS + Android bundle, web build)"*, then list each unconfigured or manual tier by name with its status. The change may be committed.
 3. **Non-zero:** stop. Show the failing tier's output, fix the cause (not the test), and rerun from Tier 1.
 4. Never commit with a failing configured tier, and never describe `NOT CONFIGURED` tiers as passed.

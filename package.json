@@ -13,8 +13,11 @@
     "qa:types": "tsc --noEmit",
     "qa:unit": "npm test",
     "qa:bundle": "node scripts/qa-bundle.js",
-    "qa:gate": "npm run qa:types && npm run qa:unit && npm run qa:bundle",
-    "icons": "node scripts/generate-icons.js"
+    "qa:gate": "npm run qa:types && npm run qa:unit && npm run qa:bundle && npm run qa:web",
+    "icons": "node scripts/generate-icons.js",
+    "build:web": "node scripts/build-web.js",
+    "preview:web": "node scripts/serve-web.js",
+    "qa:web": "node scripts/build-web.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",

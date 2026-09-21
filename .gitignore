@@ -42,3 +42,6 @@ yarn-error.*
 
 # QA bundle check output
 .export-check/
+
+# Web build output
+dist/

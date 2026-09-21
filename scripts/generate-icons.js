@@ -12,6 +12,7 @@ const sharp = require('sharp');
 
 const ASSETS = path.join(__dirname, '..', 'assets');
 const BRANDING = path.join(ASSETS, 'branding');
+const PWA_ICONS = path.join(__dirname, '..', 'public', 'icons');
 
 const GREEN = '#30D158';
 const BLACK = '#000000';
@@ -54,11 +55,11 @@ function svg({ bg, scale = 1, mono = false }) {
 `;
 }
 
-async function png(file, markup, size = 1024, { flatten = false } = {}) {
+async function png(file, markup, size = 1024, { flatten = false, dir = ASSETS } = {}) {
   let img = sharp(Buffer.from(markup)).resize(size, size);
   if (flatten) img = img.flatten({ background: BLACK }).removeAlpha();
-  await img.png({ compressionLevel: 9 }).toFile(path.join(ASSETS, file));
-  console.log(`✔ ${file} (${size}×${size})`);
+  await img.png({ compressionLevel: 9 }).toFile(path.join(dir, file));
+  console.log(`✔ ${path.relative(path.join(__dirname, '..'), path.join(dir, file))} (${size}×${size})`);
 }
 
 (async () => {
@@ -77,6 +78,15 @@ async function png(file, markup, size = 1024, { flatten = false } = {}) {
   // Launch screen (the screen itself is black) and browser tab.
   await png('splash-icon.png', svg({ bg: null }));
   await png('favicon.png', svg({ bg: BLACK }), 256, { flatten: true });
+
+  // Installable web app (PWA): served from public/icons.
+  fs.mkdirSync(PWA_ICONS, { recursive: true });
+  const opaque = { flatten: true, dir: PWA_ICONS };
+  await png('icon-192.png', svg({ bg: BLACK }), 192, opaque);
+  await png('icon-512.png', svg({ bg: BLACK }), 512, opaque);
+  // "maskable": artwork kept inside the central safe zone so any launcher shape can crop it.
+  await png('maskable-512.png', svg({ bg: BLACK, scale: 0.8 }), 512, opaque);
+  await png('apple-touch-icon.png', svg({ bg: BLACK }), 180, opaque);
 })().catch((e) => {
   console.error(e);
   process.exit(1);

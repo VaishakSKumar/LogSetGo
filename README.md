@@ -14,6 +14,8 @@ npm run typecheck
 
 **New here?** See [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) for install steps and how to share the app with friends on iPhone and Android.
 
+**Web app:** the web version is an installable, offline-capable PWA, published to GitHub Pages on every push to `main`. Setup and how friends install it: [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md#route-a-web-app-link-iphone--android-free).
+
 **Try it with history:** create `.env.local` containing `EXPO_PUBLIC_DEMO=1`. On first launch (nothing stored yet) it seeds five weeks of push/pull/legs sessions. Delete the file to start clean.
 
 ## What you get

@@ -15,6 +15,7 @@ import { AttendanceProvider, useAttendance } from './src/store/attendance';
 import { BodyProvider, useBody } from './src/store/body';
 import { GymProvider, useGym } from './src/store/gym';
 import { TimerProvider, useTimer } from './src/store/timer';
+import { registerServiceWorker } from './src/lib/pwa';
 import { colors, motion } from './src/theme';
 
 /**
@@ -115,6 +116,11 @@ function Root() {
 }
 
 export default function App() {
+  // Web only: cache the app so it opens instantly and works offline once installed.
+  useEffect(() => {
+    registerServiceWorker();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <GymProvider>
