@@ -12,7 +12,7 @@ import Animated, {
 
 import { haptic } from '../lib/haptics';
 import { resolveSet } from '../lib/progress';
-import { fmtDelta, fmtWeight, fromDisplay, toDisplay } from '../lib/units';
+import { fmtDelta, fmtWeight, fromDisplay, roundDisplay, toDisplay } from '../lib/units';
 import { colors, motion, roundedFont } from '../theme';
 import type { Ghost, SetPerf, SetRow as SetRowData, Unit } from '../types';
 import { CheckIcon } from './Icons';
@@ -26,7 +26,6 @@ export const COL = {
   check: 'w-11',
 } as const;
 
-const round1 = (n: number) => Math.round(n * 10) / 10;
 
 /* ─────────────── Numeric cell ─────────────── */
 
@@ -66,7 +65,7 @@ function NumberCell({ value, ghost, locked, decimal, label, onCommit }: NumberCe
   const finish = () => {
     setEditing(false);
     const n = parseFloat(text.replace(',', '.'));
-    onCommit(Number.isFinite(n) && n > 0 ? (decimal ? round1(n) : Math.round(n)) : null);
+    onCommit(Number.isFinite(n) && n > 0 ? (decimal ? roundDisplay(n) : Math.round(n)) : null);
   };
 
   if (editing) {
@@ -214,8 +213,8 @@ function SetRowView({ index, row, prev, ghost, unit, active, onChange, onLog }: 
     onLog(row.id, resolved.weight, resolved.reps);
   };
 
-  const weightDisplay = row.weight == null ? null : round1(toDisplay(row.weight, unit));
-  const weightGhost = ghost.weight == null ? null : round1(toDisplay(ghost.weight, unit));
+  const weightDisplay = row.weight == null ? null : roundDisplay(toDisplay(row.weight, unit));
+  const weightGhost = ghost.weight == null ? null : roundDisplay(toDisplay(ghost.weight, unit));
 
   return (
     <Animated.View entering={FadeIn.duration(motion.duration)} layout={LinearTransition.duration(motion.duration)} style={wrap}>

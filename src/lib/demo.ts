@@ -1,4 +1,4 @@
-import type { AppData, SetRow, Session } from '../types';
+import { DEFAULT_PREFS, type AppData, type SetRow, type Session } from '../types';
 import type { BodyData, WeightEntry } from './body';
 import { addDays, daysBetween, parseKey, weekStartKey, weekdayIndex } from './dates';
 
@@ -65,7 +65,7 @@ export function buildDemoData(todayKey: string): AppData {
     sessions[date] = { label: plan.label, exercises };
   }
 
-  return { version: 1, unit: 'kg', activeExerciseId: null, customExercises: [], sessions };
+  return { version: 1, unit: 'kg', activeExerciseId: null, customExercises: [], sessions, routines: [], goals: {}, prefs: DEFAULT_PREFS };
 }
 
 /**

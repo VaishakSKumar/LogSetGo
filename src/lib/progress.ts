@@ -6,8 +6,9 @@ type Sessions = Record<string, Session>;
 
 /* ─────────────────────────── History ─────────────────────────── */
 
-const isLogged = (r: SetRow): r is SetRow & { weight: number; reps: number } =>
-  r.done && r.weight != null && r.reps != null;
+/** A finished working set. Warm-ups are deliberately excluded from history, volume, PRs and suggestions. */
+export const isLogged = (r: SetRow): r is SetRow & { weight: number; reps: number } =>
+  r.done && r.weight != null && r.reps != null && !r.warmup;
 
 /** Every completed set you have ever logged, per exercise, newest session first. */
 export function buildHistory(sessions: Sessions): Record<string, HistoryEntry[]> {
@@ -140,13 +141,13 @@ const STRENGTH_REPS = 6;
  *  · all top sets equal, 7–11 reps    → add one rep per set
  *  · uneven top sets                  → bring every set up to your best set
  */
-export function suggestNext(prev: SetPerf[], unit: Unit): Suggestion | null {
+export function suggestNext(prev: SetPerf[], unit: Unit, step: number = stepFor(unit)): Suggestion | null {
   if (!prev.length) return null;
   const topW = Math.max(...prev.map((s) => s.weight));
   const top = prev.filter((s) => s.weight === topW);
   const minReps = Math.min(...top.map((s) => s.reps));
   const maxReps = Math.max(...top.map((s) => s.reps));
-  const jump = fromDisplay(stepFor(unit), unit);
+  const jump = fromDisplay(step, unit);
   const label = (w: number, r: number) => `${fmtWeight(w, unit)} ${unit} × ${r}`;
 
   const apply = (fn: (s: SetPerf) => SetPerf) => prev.map((s) => (s.weight === topW ? fn(s) : s));

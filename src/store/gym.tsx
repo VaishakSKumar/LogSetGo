@@ -16,6 +16,7 @@ import { dateKey } from '../lib/dates';
 import { buildDemoData } from '../lib/demo';
 import { buildHistory, buildRecents, defaultLabelFor } from '../lib/progress';
 import type { AppData, Exercise, HistoryEntry, SetPerf, SetRow, Unit } from '../types';
+import { normalizeAppData } from '../lib/appdata';
 import { initialData, reducer, type Field } from './reducer';
 
 const STORAGE_KEY = 'minimalist-gym-tracker/v1';
@@ -65,9 +66,7 @@ export function useGym() {
 function parseStored(raw: string | null): AppData | null {
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as Partial<AppData>;
-    if (parsed.version !== 1 || typeof parsed.sessions !== 'object' || !parsed.sessions) return null;
-    return { ...initialData, ...parsed } as AppData;
+    return normalizeAppData(JSON.parse(raw));
   } catch {
     return null;
   }

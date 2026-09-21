@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { haptic } from '../lib/haptics';
 import { resolveSet } from '../lib/progress';
-import { fmtWeight, fromDisplay, stepFor, toDisplay } from '../lib/units';
+import { fmtWeight, fromDisplay, roundDisplay, toDisplay } from '../lib/units';
 import { colors } from '../theme';
 import type { Ghost, SetRow, Unit } from '../types';
 import { MinusIcon, PlusIcon } from './Icons';
@@ -14,6 +14,8 @@ interface LogDockProps {
   activeIndex: number;
   ghost: Ghost | undefined;
   unit: Unit;
+  /** size of one weight +/- tap, in the display unit */
+  step: number;
   onChange: (rowId: string, field: 'weight' | 'reps', value: number | null) => void;
   onLog: (rowId: string, weight: number, reps: number) => void;
   onAdd: () => void;
@@ -39,7 +41,7 @@ function Stepper({ label, text, ghosted, onMinus, onPlus }: { label: string; tex
 }
 
 /** Thumb-zone dock: ± steppers for the active set, and the one big "Log set" button. */
-export function LogDock({ activeRow, activeIndex, ghost, unit, onChange, onLog, onAdd }: LogDockProps) {
+export function LogDock({ activeRow, activeIndex, ghost, unit, step, onChange, onLog, onAdd }: LogDockProps) {
   const insets = useSafeAreaInsets();
   const resolved = activeRow && ghost ? resolveSet(activeRow, ghost) : null;
 
@@ -50,7 +52,7 @@ export function LogDock({ activeRow, activeIndex, ghost, unit, onChange, onLog, 
     if (!activeRow) return;
     haptic.tap();
     const current = weightKg == null ? 0 : toDisplay(weightKg, unit);
-    const next = Math.max(0, Math.round((current + dir * stepFor(unit)) * 10) / 10);
+    const next = Math.max(0, roundDisplay(current + dir * step));
     onChange(activeRow.id, 'weight', next === 0 ? null : fromDisplay(next, unit));
     // Stepping weight also commits the ghost reps so the set is loggable in one more tap.
     if (activeRow.reps == null && ghost?.reps != null) onChange(activeRow.id, 'reps', ghost.reps);

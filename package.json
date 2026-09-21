@@ -9,7 +9,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/lib/logic.test.ts",
+    "test": "tsx --test src/lib/logic.test.ts src/lib/features.test.ts",
     "qa:types": "tsc --noEmit",
     "qa:unit": "npm test",
     "qa:bundle": "node scripts/qa-bundle.js",

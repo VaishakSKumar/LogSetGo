@@ -5,7 +5,8 @@ import {
   e1rm,
   previousEntry,
 } from '../lib/progress';
-import type { AppData, Exercise, SetPerf, SetRow, Session, Unit } from '../types';
+import { EMPTY_APP_DATA } from '../lib/appdata';
+import { type AppData, type Exercise, type Goal, type Prefs, type Routine, type SetPerf, type SetRow, type Session, type Unit } from '../types';
 
 export type Field = 'weight' | 'reps';
 
@@ -19,15 +20,16 @@ export type Action =
   | { type: 'fill'; date: string; values: SetPerf[] }
   | { type: 'label'; date: string; label: string }
   | { type: 'unit'; unit: Unit }
-  | { type: 'createExercise'; exercise: Exercise };
+  | { type: 'createExercise'; exercise: Exercise }
+  | { type: 'addRoutine'; routine: Routine }
+  | { type: 'deleteRoutine'; id: string }
+  | { type: 'startRoutine'; date: string; routine: Routine }
+  | { type: 'setGoal'; exerciseId: string; goal: Goal | null }
+  | { type: 'setPrefs'; prefs: Partial<Prefs> }
+  | { type: 'setSetMeta'; date: string; rowId: string; meta: { warmup?: boolean; rpe?: number | null; note?: string } }
+  | { type: 'setExerciseNote'; date: string; exerciseId: string; note: string };
 
-export const initialData: AppData = {
-  version: 1,
-  unit: 'kg',
-  activeExerciseId: null,
-  customExercises: [],
-  sessions: {},
-};
+export const initialData: AppData = EMPTY_APP_DATA;
 
 const newRow = (rows: SetRow[]): SetRow => ({
   id: String(rows.reduce((m, r) => Math.max(m, Number(r.id) || 0), 0) + 1),
@@ -84,7 +86,7 @@ export function reducer(state: AppData, action: Action): AppData {
         rows.map((r) => {
           if (r.id !== action.rowId) return r;
           if (r.done) return { ...r, done: false, at: undefined, pr: undefined };
-          const pr = prior !== null && e1rm(action.weight, action.reps) > prior + 1e-6;
+          const pr = !r.warmup && prior !== null && e1rm(action.weight, action.reps) > prior + 1e-6;
           return { ...r, weight: action.weight, reps: action.reps, done: true, at: action.at, pr };
         }),
       );
@@ -112,6 +114,61 @@ export function reducer(state: AppData, action: Action): AppData {
 
     case 'unit':
       return { ...state, unit: action.unit };
+
+    case 'addRoutine':
+      return { ...state, routines: [...state.routines.filter((r) => r.id !== action.routine.id), action.routine] };
+
+    case 'deleteRoutine':
+      return { ...state, routines: state.routines.filter((r) => r.id !== action.id) };
+
+    case 'startRoutine': {
+      const session = withSession(state, action.date);
+      const exercises = { ...session.exercises };
+      for (const item of action.routine.items) {
+        if (exercises[item.exerciseId]?.length) continue;
+        const rows: SetRow[] = [];
+        for (let i = 0; i < Math.max(1, item.sets); i++) rows.push(newRow(rows));
+        exercises[item.exerciseId] = rows;
+      }
+      return {
+        ...state,
+        activeExerciseId: action.routine.items[0]?.exerciseId ?? state.activeExerciseId,
+        sessions: { ...state.sessions, [action.date]: { ...session, label: action.routine.name, exercises } },
+      };
+    }
+
+    case 'setGoal': {
+      const goals = { ...state.goals };
+      if (action.goal) goals[action.exerciseId] = action.goal;
+      else delete goals[action.exerciseId];
+      return { ...state, goals };
+    }
+
+    case 'setPrefs':
+      return { ...state, prefs: { ...state.prefs, ...action.prefs } };
+
+    case 'setSetMeta':
+      return updateRows(state, action.date, (rows) =>
+        rows.map((r) => {
+          if (r.id !== action.rowId) return r;
+          const next = { ...r };
+          if (action.meta.warmup !== undefined) {
+            next.warmup = action.meta.warmup || undefined;
+            if (action.meta.warmup) next.pr = undefined;
+          }
+          if (action.meta.rpe !== undefined) next.rpe = action.meta.rpe ?? undefined;
+          if (action.meta.note !== undefined) next.note = action.meta.note.trim() || undefined;
+          return next;
+        }),
+      );
+
+    case 'setExerciseNote': {
+      const session = withSession(state, action.date);
+      const notes = { ...session.notes };
+      if (action.note.trim()) notes[action.exerciseId] = action.note;
+      else delete notes[action.exerciseId];
+      return { ...state, sessions: { ...state.sessions, [action.date]: { ...session, notes } } };
+    }
 
     case 'createExercise':
       return state.customExercises.some((e) => e.id === action.exercise.id)

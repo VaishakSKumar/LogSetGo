@@ -114,6 +114,7 @@ export function WorkoutScreen() {
               activeIndex={activeIndex}
               ghost={activeIndex >= 0 ? ghosts[activeIndex] : undefined}
               unit={data.unit}
+              step={data.unit === 'kg' ? data.prefs.stepKg : data.prefs.stepLb}
               onChange={actions.setField}
               onLog={logSet}
               onAdd={actions.addSet}
