@@ -9,7 +9,11 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/lib/logic.test.ts"
+    "test": "tsx --test src/lib/logic.test.ts",
+    "qa:types": "tsc --noEmit",
+    "qa:unit": "npm test",
+    "qa:bundle": "node scripts/qa-bundle.js",
+    "qa:gate": "npm run qa:types && npm run qa:unit && npm run qa:bundle"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
