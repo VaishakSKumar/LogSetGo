@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
@@ -20,6 +20,12 @@ const INPUT_FONT = { fontSize: 17, letterSpacing: -0.2, fontWeight: '400' } as c
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Hero use (nothing logged yet): a "type an exercise" prompt instead of "Choose an exercise". */
+  hero?: boolean;
+  /** Show the selected exercise's name while closed. Off in the hero until you've picked one today. */
+  showSelected?: boolean;
+  /** "sheet": the elevated #2C2C2E field used inside the recorder drawer. */
+  variant?: 'default' | 'sheet';
 }
 
 /** Highlights the part of the name you've typed so far. */
@@ -34,9 +40,10 @@ function Name({ name, query }: { name: string; query: string }) {
   );
 }
 
-export function ExerciseSearch({ open, onOpenChange }: Props) {
+export function ExerciseSearch({ open, onOpenChange, hero = false, showSelected = true, variant = 'default' }: Props) {
   const { exercises, recents, history, active, label, today, data, actions } = useGym();
   const [query, setQuery] = useState('');
+  const inputRef = useRef<TextInput>(null);
   /** name waiting for a muscle group (custom exercise being created) */
   const [pendingName, setPendingName] = useState<string | null>(null);
 
@@ -61,6 +68,21 @@ export function ExerciseSearch({ open, onOpenChange }: Props) {
     haptic.tap();
     actions.selectExercise(ex.id);
     close();
+  };
+
+  /** What the field currently shows: what you're typing, or the selected exercise's name while closed. */
+  const shownText = open ? query : showSelected ? (active?.name ?? '') : '';
+
+  /**
+   * The ✕: empties the field right away and leaves you in it, ready to type. It never closes anything
+   * around it, and it doesn't touch the selected exercise until you pick another one.
+   */
+  const clear = () => {
+    haptic.tap();
+    setPendingName(null);
+    setQuery('');
+    onOpenChange(true);
+    inputRef.current?.focus();
   };
 
   const create = () => setPendingName(tidyName(query));
@@ -122,8 +144,12 @@ export function ExerciseSearch({ open, onOpenChange }: Props) {
     <View>
       <View className="flex-row items-center gap-3">
         <View
-          className="h-12 flex-1 flex-row items-center rounded-full border border-line bg-surface px-4"
-          style={{ borderColor: open ? 'rgba(255,255,255,0.25)' : colors.line }}
+          className="h-12 flex-1 flex-row items-center rounded-full border border-line bg-surface pl-4"
+          style={{
+            borderColor: open ? 'rgba(255,255,255,0.25)' : colors.line,
+            backgroundColor: variant === 'sheet' ? colors.fill : colors.surface,
+            paddingRight: shownText.length > 0 ? 44 : 16,
+          }}
         >
           <SearchIcon />
           <View className="ml-3 h-12 flex-1 justify-center">
@@ -136,11 +162,12 @@ export function ExerciseSearch({ open, onOpenChange }: Props) {
               </View>
             ) : null}
             <TextInput
-              value={open ? query : (active?.name ?? '')}
+              ref={inputRef}
+              value={shownText}
               onChangeText={setQuery}
               onFocus={() => onOpenChange(true)}
               onSubmitEditing={submit}
-              placeholder={open ? 'Search exercises' : 'Choose an exercise'}
+              placeholder={open ? 'Search exercises' : hero ? 'Type an exercise, e.g. Bench Press' : 'Choose an exercise'}
               placeholderTextColor={colors.ghost}
               autoCapitalize="words"
               autoCorrect={false}
@@ -150,9 +177,15 @@ export function ExerciseSearch({ open, onOpenChange }: Props) {
               style={[INPUT_FONT, { height: 48, padding: 0, color: colors.label, outlineStyle: 'none' } as never]}
             />
           </View>
-          {open && query ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Clear" hitSlop={12} onPress={() => setQuery('')}>
-              <CloseIcon size={16} />
+          {shownText.length > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              onPress={clear}
+              className="items-center justify-center active:opacity-60"
+              style={{ position: 'absolute', right: 6, top: 0, bottom: 0, width: 36 }}
+            >
+              <CloseIcon size={16} color={colors.muted} />
             </Pressable>
           ) : null}
         </View>

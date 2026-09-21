@@ -23,6 +23,10 @@ module.exports = {
         h2: ['17px', { lineHeight: '22px', letterSpacing: '-0.2px', fontWeight: '600' }],
         num: ['20px', { lineHeight: '24px', fontWeight: '500' }],
         body: ['15px', { lineHeight: '20px', fontWeight: '400' }],
+        /** session summary metrics (SF Pro Rounded, bold) */
+        metric: ['22px', { lineHeight: '28px', fontWeight: '700' }],
+        /** meta text and previous sets */
+        meta: ['13px', { lineHeight: '18px', fontWeight: '400' }],
         caption: ['12px', { lineHeight: '16px', fontWeight: '400' }],
       },
       spacing: { 18: '72px' },

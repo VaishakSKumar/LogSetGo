@@ -43,6 +43,20 @@ A three-tab bar sits at the top of every screen:
 
 Tabs mount when first opened and then stay alive, so scroll position, the calendar month and an open search survive switching. A running rest timer stays docked on every tab. On Android, the back button returns to Attendance before it exits the app.
 
+### Gym Progress: one flow, three states
+| State | What you see |
+|---|---|
+| **A. Nothing logged yet** | A centred search bar ("What are you training?") and a quiet prompt card. No `+` button, so there is one obvious thing to do. Picking an exercise opens the entry panel under the search. |
+| **B. Something logged** | A collapsible **Today's workout** card (exercises · sets · total volume, each counting to its new value), a feed of exercise cards (name, muscle badge, completed sets table, last-time reference) and a green **+ Add exercise** pill. |
+| **C. Recorder drawer** | Tapping **+** (or picking an exercise) slides a 90%-height drawer up from the bottom. Top to bottom: the search bar (with a **✕**), what you did last time, the set rows with **+ Add set**, live volume (this exercise and today's total), the rest timer, overload hint and goal. Pinned at the bottom: the rest countdown while one runs, the ± steppers, and **Done**. |
+
+- **The ✕** appears inside the search bar whenever it has text. It empties the field and leaves you in it, ready to type; it never closes the drawer.
+- **+ Add set** starts the new row from the set before it (weight and reps), so repeating a set is one tap.
+- **Done** checks there is something to save, gives a light haptic, closes the drawer, and scrolls back to today's summary. If the exercise has no checked-off set it stays open and says why. Sets are saved the moment you check them, so dragging the handle down, tapping outside, or the Android back button also keeps everything you've logged; only Done confirms and returns you to the top.
+- **Delete an exercise:** swipe its card left, or tap **•••**. Both routes end in an explicit "Delete …?" confirmation with what will be removed; confirming gives a medium haptic and the totals count down. Only that day is affected. **•••** also has **Add or edit sets**.
+- A "logged" exercise has at least one checked set. Exercises you picked (or loaded from a routine) but haven't logged yet stay in the panel's chips, not the feed.
+- Warm-ups are shown on the card (marked **W**) but never count toward sets or volume.
+
 ### Backup, records and more
 | Feature | What it does |
 |---|---|
@@ -138,6 +152,8 @@ src/lib/appdata.ts          data normalisation + merge (tested)
 src/lib/routines.ts         plan builder + routine helpers (tested)
 src/lib/stats.ts            volume, records, muscle split, summary, goals (tested)
 src/lib/calc.ts             1RM, plates, warm-ups (tested)
+src/lib/session.ts          day feed, summary, "last time" text (tested)
+src/components/session/     BottomDrawer, WorkoutRecorderSheet, SummaryCard, ExerciseLogCard, SwipeToDelete, AddExerciseButton, ExerciseMenuSheet, AnimatedNumber
 src/lib/notify.ts, files.ts, diagnostics.ts   native-facing helpers (safe no-ops on web)
 src/__tests__/              UI tests (Jest + Testing Library)
 src/store/timer.tsx         timer provider: scheduling, persistence, keep-awake
