@@ -1,6 +1,9 @@
 export type Unit = 'kg' | 'lb';
-export type MuscleGroup = 'Chest' | 'Back' | 'Shoulders' | 'Legs' | 'Arms' | 'Core' | 'Other';
+export type MuscleGroup = 'Chest' | 'Back' | 'Shoulders' | 'Legs' | 'Arms' | 'Core' | 'Cardio' | 'Other';
 export type Split = 'push' | 'pull' | 'legs' | 'other';
+
+/** 'time' means the set's second number is a duration in seconds, not a rep count. */
+export type SetMode = 'reps' | 'time';
 
 export interface Exercise {
   id: string;
@@ -9,9 +12,17 @@ export interface Exercise {
   split: Split;
   aliases?: string[];
   custom?: boolean;
+  /** The mode a freshly picked instance of this exercise starts in, before any personal override. */
+  defaultMode?: SetMode;
 }
 
-/** One row in the set table. Weight is always stored in kg. */
+/**
+ * One row in the set table. Weight is always stored in kg.
+ * `reps` doubles as the duration in seconds when `mode` is `'time'` — one numeric field, formatted
+ * and parsed differently at the edges, so every existing weight×reps calculation keeps working
+ * unchanged and simply treats a time-based set's number as "0 reps of a rep exercise" (harmless,
+ * since kg volume, PRs and suggestions all explicitly skip `mode: 'time'` rows).
+ */
 export interface SetRow {
   id: string;
   weight: number | null;
@@ -19,13 +30,15 @@ export interface SetRow {
   done: boolean;
   /** epoch ms when the set was logged */
   at?: number;
-  /** true if this set beat every earlier set of the exercise (est. 1RM) */
+  /** true if this set beat every earlier set of the exercise (est. 1RM, or longest hold for a time-based set) */
   pr?: boolean;
   /** warm-up sets never count toward volume, PRs, history or suggestions */
   warmup?: boolean;
   /** rate of perceived exertion, 1-10 */
   rpe?: number;
   note?: string;
+  /** Absent means 'reps' (older data, and every rep-based row). */
+  mode?: SetMode;
 }
 
 export interface Session {
@@ -68,6 +81,12 @@ export interface AppData {
   /** keyed by exercise id */
   goals: Record<string, Goal>;
   prefs: Prefs;
+  /** User-created workout day names (e.g. "Upper Hypertrophy"), newest first. Alongside the fixed DAY_LABELS. */
+  customDayLabels: string[];
+  /** Built-in day names (from DAY_LABELS) removed from the picker. Reversible; a day already logged under one keeps its label. */
+  hiddenDayLabels: string[];
+  /** Your Reps-vs-Time choice per exercise, remembered for next time. Unset exercises fall back to catalog smart-detection. */
+  exerciseModes: Record<string, SetMode>;
 }
 
 export interface SetPerf {

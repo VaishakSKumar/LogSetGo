@@ -77,6 +77,13 @@ export const PauseIcon = ({ size = 18, color = '#fff' }: IconProps) => (
   </Svg>
 );
 
+export const TrashIcon = ({ size = 16, color = '#FF453A', stroke = 2 }: IconProps) => (
+  <Svg {...base(size)}>
+    <Path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0 1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" {...line(color, stroke)} />
+    <Path d="M10 11v6M14 11v6" {...line(color, stroke)} />
+  </Svg>
+);
+
 export const ChevronLeftIcon = ({ size = 18, color = '#fff', stroke = 2.6 }: IconProps) => (
   <Svg {...base(size)}>
     <Path d="M15 5l-7 7 7 7" {...line(color, stroke)} />

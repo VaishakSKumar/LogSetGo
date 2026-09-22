@@ -10,8 +10,10 @@ import { canLog, resolveStatuses } from './attendance';
 import { emptyBody } from './body';
 import { DEFAULT_BAR, oneRepMax, percentTable, platesPerSide, PLATES, warmupSets } from './calc';
 import { buildDemoData } from './demo';
-import { buildHistory, isLogged, suggestNext, weekTotals } from './progress';
-import { formatSets, loggedExercises, summarizeDay } from './session';
+import { addCustomDayLabel, hideDefaultDayLabel, isDefaultDayLabel, MAX_CUSTOM_DAY_LABELS, MAX_DAY_LABEL_LENGTH, normalizeDayLabel, removeCustomDayLabel, visibleDefaultDayLabels } from './daylabels';
+import { formatDuration, parseDurationInput } from './duration';
+import { bestDurationExcluding, buildDurationHistory, buildHistory, DAY_LABELS, isLogged, isTimeSet, setKg, suggestNext, weekTotals } from './progress';
+import { exerciseTut, exerciseVolume, formatSets, loggedExercises, summarizeDay } from './session';
 import { PLAN_EXERCISE_IDS, buildPlan, routineFromSession, routineIdFor, type PlanDays } from './routines';
 import { e1rmSeries, goalProgress, muscleSplit, recordsList, weeklyBuckets, workoutSummary } from './stats';
 import { MAX_ERRORS, pushError, type ErrorEntry } from './errorlog';
@@ -101,7 +103,7 @@ describe('backup & restore', () => {
     const gym = withSessions({ '2026-09-21': { label: 'Push, A', exercises: { x: [row('1', 60, 8, true, { note: 'felt "great"\nnext' }), row('2', 60, 8, false)] } } });
     const csv = setsToCsv(gym, [{ id: 'x', name: 'Bench, Flat', group: 'Chest', split: 'push' }]);
     const lines = csv.trim().split('\r\n');
-    assert.equal(lines[0], 'date,workout,exercise,set,weight_kg,reps,warmup,rpe,note');
+    assert.equal(lines[0], 'date,workout,exercise,set,weight_kg,reps,duration,mode,warmup,rpe,note');
     assert.ok(csv.includes('"Push, A"') && csv.includes('"Bench, Flat"') && csv.includes('"felt ""great""\nnext"'));
     assert.equal((csv.match(/2026-09-21/g) ?? []).length, 1); // only the done set
     assert.equal(weightsToCsv({ ...emptyBody, entries: [{ id: 'a', date: '2026-09-18', at: 0, kg: 77.123456 }] }).includes('77.12'), true);
@@ -123,7 +125,7 @@ describe('warm-up sets', () => {
   });
 
   it('marking a set as warm-up in the reducer clears its PR flag and it cannot earn one', () => {
-    let s = reducer(initialData, { type: 'select', id: 'a', date: TODAY });
+    let s = reducer(initialData, { type: 'select', id: 'a', date: TODAY, mode: 'reps' });
     s = reducer(s, { type: 'toggle', date: TODAY, rowId: '1', weight: 60, reps: 5, at: 1 });
     s = reducer(s, { type: 'toggle', date: TODAY, rowId: '2', weight: 100, reps: 5, at: 2 });
     assert.equal(s.sessions[TODAY].exercises.a[1].pr, true);
@@ -138,10 +140,10 @@ describe('warm-up sets', () => {
 
 describe('reducer: routines, goals, prefs, notes, set details', () => {
   it('startRoutine creates rows for each exercise, selects the first, names the day, keeps existing work', () => {
-    let s = reducer(initialData, { type: 'select', id: 'barbell-bench-press', date: TODAY });
+    let s = reducer(initialData, { type: 'select', id: 'barbell-bench-press', date: TODAY, mode: 'reps' });
     s = reducer(s, { type: 'toggle', date: TODAY, rowId: '1', weight: 60, reps: 8, at: 1 });
     const routine = { id: 'r', name: 'Push A', items: [{ exerciseId: 'overhead-press', sets: 4 }, { exerciseId: 'barbell-bench-press', sets: 5 }] };
-    s = reducer(s, { type: 'startRoutine', date: TODAY, routine });
+    s = reducer(s, { type: 'startRoutine', date: TODAY, routine, modes: {} });
     assert.equal(s.activeExerciseId, 'overhead-press');
     assert.equal(s.sessions[TODAY].label, 'Push A');
     assert.equal(s.sessions[TODAY].exercises['overhead-press'].length, 4);
@@ -167,7 +169,7 @@ describe('reducer: routines, goals, prefs, notes, set details', () => {
   });
 
   it('set details (RPE, note) and exercise notes', () => {
-    let s = reducer(initialData, { type: 'select', id: 'a', date: TODAY });
+    let s = reducer(initialData, { type: 'select', id: 'a', date: TODAY, mode: 'reps' });
     s = reducer(s, { type: 'setSetMeta', date: TODAY, rowId: '1', meta: { rpe: 8, note: '  paused reps  ' } });
     assert.deepEqual([s.sessions[TODAY].exercises.a[0].rpe, s.sessions[TODAY].exercises.a[0].note], [8, 'paused reps']);
     s = reducer(s, { type: 'setSetMeta', date: TODAY, rowId: '1', meta: { rpe: null, note: '' } });
@@ -489,5 +491,229 @@ describe('adding a set', () => {
     assert.deepEqual([rows[1].weight, rows[1].reps], [null, null]);
     const none: AppData = { ...initialData, activeExerciseId: 'x', sessions: { [D]: { label: 'x', exercises: { x: [] } } } };
     assert.equal(reducer(none, { type: 'addSet', date: D }).sessions[D].exercises.x.length, 1);
+  });
+});
+
+describe('custom day names', () => {
+  it('normalizes: trims, collapses spaces, title-cases, caps length', () => {
+    assert.equal(normalizeDayLabel('  upper   hypertrophy  '), 'Upper Hypertrophy');
+    assert.equal(normalizeDayLabel(''), '');
+    assert.equal(normalizeDayLabel('   '), '');
+    assert.equal(normalizeDayLabel('x'.repeat(50)).length, MAX_DAY_LABEL_LENGTH);
+  });
+
+  it('recognizes the built-in day names, case-insensitively', () => {
+    assert.equal(isDefaultDayLabel('Upper'), true);
+    assert.equal(isDefaultDayLabel('upper'), true);
+    assert.equal(isDefaultDayLabel('Push A'), true);
+    assert.equal(isDefaultDayLabel('Upper Hypertrophy'), false);
+  });
+
+  it('adds to the front, dedupes case-insensitively, and ignores blanks and defaults', () => {
+    let list = addCustomDayLabel([], 'Delts & Arms');
+    assert.deepEqual(list, ['Delts & Arms']);
+    list = addCustomDayLabel(list, 'core & cardio');
+    assert.deepEqual(list, ['Core & Cardio', 'Delts & Arms']);
+    // re-adding (any case) moves it to the front instead of duplicating
+    list = addCustomDayLabel(list, 'delts & arms');
+    assert.deepEqual(list, ['Delts & Arms', 'Core & Cardio']);
+    assert.equal(addCustomDayLabel(list, '   ').length, 2);
+    assert.equal(addCustomDayLabel(list, 'upper').length, 2); // matches a default: not added
+  });
+
+  it('caps the custom list at MAX_CUSTOM_DAY_LABELS, dropping the oldest', () => {
+    let list: string[] = [];
+    for (let i = 0; i < MAX_CUSTOM_DAY_LABELS + 5; i++) list = addCustomDayLabel(list, `Day ${i}`);
+    assert.equal(list.length, MAX_CUSTOM_DAY_LABELS);
+    assert.equal(list[0], `Day ${MAX_CUSTOM_DAY_LABELS + 4}`); // newest first
+    assert.ok(!list.includes('Day 0')); // oldest fell off
+  });
+
+  it('removes case-insensitively and leaves everything else untouched', () => {
+    const list = ['Delts & Arms', 'Core & Cardio'];
+    assert.deepEqual(removeCustomDayLabel(list, 'DELTS & ARMS'), ['Core & Cardio']);
+    assert.deepEqual(removeCustomDayLabel(list, 'nope'), list);
+  });
+
+  it('reducer: addDayLabel/deleteDayLabel touch only customDayLabels', () => {
+    let s = reducer(initialData, { type: 'addDayLabel', label: 'Core & Cardio' });
+    assert.deepEqual(s.customDayLabels, ['Core & Cardio']);
+    s = reducer(s, { type: 'deleteDayLabel', label: 'core & cardio' });
+    assert.deepEqual(s.customDayLabels, []);
+  });
+
+  it('normalizeAppData cleans customDayLabels: trims, dedupes case-insensitively, drops junk, caps', () => {
+    const raw = { version: 1, sessions: {}, customDayLabels: ['  Core & Cardio  ', 'core & cardio', 42, '', 'Delts & Arms'] };
+    const data = normalizeAppData(raw)!;
+    assert.deepEqual(data.customDayLabels, ['Core & Cardio', 'Delts & Arms']);
+    assert.deepEqual(normalizeAppData({ version: 1, sessions: {} })!.customDayLabels, []);
+  });
+
+  it('mergeAppData unions customDayLabels, keeping the current list first and deduping case-insensitively', () => {
+    const current: AppData = { ...initialData, customDayLabels: ['Delts & Arms'] };
+    const incoming: AppData = { ...initialData, customDayLabels: ['delts & arms', 'Core & Cardio'] };
+    assert.deepEqual(mergeAppData(current, incoming).customDayLabels, ['Delts & Arms', 'Core & Cardio']);
+  });
+});
+
+describe('hiding built-in day names', () => {
+  it('hides a default (case-insensitively), canonicalizing to the DAY_LABELS spelling', () => {
+    let hidden = hideDefaultDayLabel([], 'push a');
+    assert.deepEqual(hidden, ['Push A']);
+    hidden = hideDefaultDayLabel(hidden, 'PUSH A'); // already hidden: no duplicate
+    assert.deepEqual(hidden, ['Push A']);
+    assert.deepEqual(hideDefaultDayLabel(hidden, 'Not A Default'), hidden); // not a real default: no-op
+  });
+
+  it('visibleDefaultDayLabels removes exactly the hidden ones, case-insensitively', () => {
+    const visible = visibleDefaultDayLabels(['upper', 'Full Body']);
+    assert.ok(!visible.includes('Upper'));
+    assert.ok(!visible.includes('Full Body'));
+    assert.ok(visible.includes('Push A'));
+    assert.deepEqual(visibleDefaultDayLabels([]).length, DAY_LABELS.length);
+  });
+
+  it('reducer: hideDayLabel adds, restoreDayLabels clears, neither touches customDayLabels', () => {
+    let s = reducer(initialData, { type: 'addDayLabel', label: 'Core & Cardio' });
+    s = reducer(s, { type: 'hideDayLabel', label: 'Upper' });
+    assert.deepEqual(s.hiddenDayLabels, ['Upper']);
+    assert.deepEqual(s.customDayLabels, ['Core & Cardio']);
+    s = reducer(s, { type: 'restoreDayLabels' });
+    assert.deepEqual(s.hiddenDayLabels, []);
+    assert.deepEqual(s.customDayLabels, ['Core & Cardio']); // untouched
+  });
+
+  it('normalizeAppData cleans hiddenDayLabels: only real defaults, deduped, DAY_LABELS order', () => {
+    const raw = { version: 1, sessions: {}, hiddenDayLabels: ['full body', 'Not Real', 'UPPER', 'Upper', 42] };
+    assert.deepEqual(normalizeAppData(raw)!.hiddenDayLabels, ['Upper', 'Full Body']);
+    assert.deepEqual(normalizeAppData({ version: 1, sessions: {} })!.hiddenDayLabels, []);
+  });
+
+  it('mergeAppData unions hiddenDayLabels: hidden on either side stays hidden', () => {
+    const current: AppData = { ...initialData, hiddenDayLabels: ['Upper'] };
+    const incoming: AppData = { ...initialData, hiddenDayLabels: ['upper', 'Full Body'] };
+    assert.deepEqual(mergeAppData(current, incoming).hiddenDayLabels, ['Upper', 'Full Body']);
+  });
+});
+
+describe('duration formatting', () => {
+  it('formats whole seconds as MM:SS, minutes unpadded, seconds always two digits', () => {
+    assert.equal(formatDuration(45), '0:45');
+    assert.equal(formatDuration(70), '1:10');
+    assert.equal(formatDuration(125), '2:05');
+    assert.equal(formatDuration(600), '10:00');
+    assert.equal(formatDuration(0), '0:00');
+  });
+
+  it('clamps negatives to zero and rounds fractions', () => {
+    assert.equal(formatDuration(-5), '0:00');
+    assert.equal(formatDuration(45.6), '0:46');
+  });
+
+  it('parses bare seconds and MM:SS text the same way', () => {
+    assert.equal(parseDurationInput('70'), 70);
+    assert.equal(parseDurationInput('1:10'), 70);
+    assert.equal(parseDurationInput('01:10'), 70);
+    assert.equal(parseDurationInput('2:05'), 125);
+    assert.equal(parseDurationInput('1:'), 60); // trailing empty seconds reads as :00
+  });
+
+  it('rejects blank, negative, zero and malformed input', () => {
+    for (const bad of ['', '  ', '-5', '0', '1:60', '1:2:3', 'abc', '1:ab']) assert.equal(parseDurationInput(bad), null);
+  });
+});
+
+describe('time-based sets', () => {
+  const D = '2026-09-21';
+  const rep = (id: string, weight: number, reps: number, at = 1) => row(id, weight, reps, true, { at });
+  const hold = (id: string, weight: number, seconds: number, at = 1) => row(id, weight, seconds, true, { mode: 'time', at });
+
+  it('setKg is 0 for a time-based set, even a weighted one — its number is seconds, not reps', () => {
+    assert.equal(setKg(rep('1', 60, 8) as SetRow & { weight: number; reps: number }), 480);
+    assert.equal(setKg(hold('1', 5, 45) as SetRow & { weight: number; reps: number }), 0);
+    assert.equal(isTimeSet(hold('1', 0, 45)), true);
+    assert.equal(isTimeSet(rep('1', 60, 8)), false);
+  });
+
+  it('buildHistory keeps rep sets and drops time sets; buildDurationHistory is the mirror image', () => {
+    const gym = withSessions({ [D]: { label: 'Core', exercises: { plank: [hold('1', 0, 45), hold('2', 0, 50)], squat: [rep('1', 80, 5)] } } });
+    const strength = buildHistory(gym.sessions);
+    const duration = buildDurationHistory(gym.sessions);
+    assert.equal(strength.plank, undefined); // a pure hold never enters the strength history
+    assert.deepEqual(strength.squat[0].sets, [{ weight: 80, reps: 5 }]);
+    assert.deepEqual(duration.plank[0].sets, [{ weight: 0, reps: 45 }, { weight: 0, reps: 50 }]);
+    assert.equal(duration.squat, undefined);
+  });
+
+  it('exerciseVolume ignores time-based rows; exerciseTut sums only them; both skip warm-ups', () => {
+    const rows: SetRow[] = [rep('1', 60, 8), hold('2', 5, 45), { ...hold('3', 0, 30), warmup: true }];
+    assert.equal(exerciseVolume(rows), 480); // only the rep set
+    assert.equal(exerciseTut(rows), 45); // only the non-warm-up hold
+  });
+
+  it('loggedExercises tags each exercise with its mode and time-under-tension total', () => {
+    const session = { label: 'Core', exercises: { plank: [hold('1', 0, 45), hold('2', 0, 50)] } };
+    const [entry] = loggedExercises(session);
+    assert.equal(entry.mode, 'time');
+    assert.equal(entry.tutSeconds, 95);
+    assert.equal(entry.volume, 0);
+  });
+
+  it('summarizeDay volume never includes a time-based exercise, even a weighted one', () => {
+    const session = { label: 'Day', exercises: { squat: [rep('1', 80, 5)], plank: [hold('1', 10, 45)] } };
+    assert.deepEqual(summarizeDay(session), { exercises: 2, sets: 2, volume: 400 }); // 80*5, the plank contributes 0
+  });
+
+  it('formatSets: MM:SS for time mode, weight folded in only when non-zero', () => {
+    assert.equal(formatSets([{ weight: 0, reps: 45 }, { weight: 0, reps: 50 }], 'kg', 'time'), '0:45 · 0:50');
+    assert.equal(formatSets([{ weight: 5, reps: 45 }], 'kg', 'time'), '5 kg for 0:45');
+    assert.equal(formatSets([{ weight: 60, reps: 8 }], 'kg'), '60 × 8'); // default mode still reps
+  });
+
+  it('bestDurationExcluding tracks the longest hold, ignoring the row being logged and other exercises', () => {
+    const gym = withSessions({ [D]: { label: 'Core', exercises: { plank: [hold('1', 0, 45), hold('2', 0, 60)] } } });
+    assert.equal(bestDurationExcluding(gym.sessions, 'plank', '2', D), 45);
+    assert.equal(bestDurationExcluding(gym.sessions, 'plank', '1', D), 60);
+    assert.equal(bestDurationExcluding(gym.sessions, 'nope', '1', D), null);
+  });
+
+  describe('reducer', () => {
+    it('select seeds a time-mode exercise with 0 kg (bodyweight) rows, not blank weight', () => {
+      const s = reducer(initialData, { type: 'select', id: 'plank', date: D, mode: 'time' });
+      const rows = s.sessions[D].exercises.plank;
+      assert.ok(rows.length >= 1);
+      assert.ok(rows.every((r) => r.weight === 0 && r.mode === 'time'));
+    });
+
+    it('addSet copies the mode of the row before it, along with its weight and duration', () => {
+      let s = withSessions({ [D]: { label: 'Core', exercises: { plank: [hold('1', 5, 45, 1)] } } });
+      s = { ...s, activeExerciseId: 'plank' };
+      s = reducer(s, { type: 'addSet', date: D });
+      const added = s.sessions[D].exercises.plank.at(-1)!;
+      assert.deepEqual([added.mode, added.weight, added.reps], ['time', 5, 45]);
+    });
+
+    it('toggle grants a PR for the longest hold, using duration rather than e1RM', () => {
+      let s = withSessions({ [D]: { label: 'Core', exercises: { plank: [hold('1', 0, 60, 1)] } } });
+      s = { ...s, activeExerciseId: 'plank', sessions: { ...s.sessions, [D]: { ...s.sessions[D], exercises: { plank: [...s.sessions[D].exercises.plank, row('2', 0, null, false, { mode: 'time' })] } } } };
+      const logged = reducer(s, { type: 'toggle', date: D, rowId: '2', weight: 0, reps: 90, at: 2 });
+      assert.equal(logged.sessions[D].exercises.plank[1].pr, true);
+      const shorter = reducer(s, { type: 'toggle', date: D, rowId: '2', weight: 0, reps: 30, at: 2 });
+      assert.equal(shorter.sessions[D].exercises.plank[1].pr, false);
+    });
+
+    it('setExerciseMode saves the preference and retags the undone rows of today only', () => {
+      let s = reducer(initialData, { type: 'select', id: 'plank', date: D, mode: 'reps' }); // wrong guess, corrected below
+      s = reducer(s, { type: 'toggle', date: D, rowId: '1', weight: 0, reps: 10, at: 1 }); // logged as reps
+      s = { ...s, sessions: { ...s.sessions, '2026-09-20': { label: 'x', exercises: { plank: [row('1', null, null, false, { mode: 'reps' })] } } } };
+
+      const next = reducer(s, { type: 'setExerciseMode', date: D, exerciseId: 'plank', mode: 'time' });
+      assert.equal(next.exerciseModes.plank, 'time');
+      const rows = next.sessions[D].exercises.plank;
+      assert.equal(rows[0].mode, 'reps'); // already logged: untouched
+      assert.equal(rows[1].mode, 'time'); // not yet logged: switches immediately
+      assert.equal(rows[1].weight, 0); // defaults to bodyweight now that it is a hold
+      assert.equal(next.sessions['2026-09-20'].exercises.plank[0].mode, 'reps'); // a different day is never touched
+    });
   });
 });

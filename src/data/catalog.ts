@@ -1,4 +1,4 @@
-import type { Exercise, MuscleGroup, Split } from '../types';
+import type { Exercise, MuscleGroup, SetMode, Split } from '../types';
 
 export const slug = (name: string) =>
   name
@@ -6,7 +6,7 @@ export const slug = (name: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-type Seed = [name: string, group: MuscleGroup, split: Split, aliases?: string[]];
+type Seed = [name: string, group: MuscleGroup, split: Split, aliases?: string[], defaultMode?: SetMode];
 
 const SEEDS: Seed[] = [
   // Push
@@ -61,16 +61,26 @@ const SEEDS: Seed[] = [
   // Core
   ['Cable Crunch', 'Core', 'other', ['abs']],
   ['Hanging Leg Raise', 'Core', 'other', ['abs']],
-  ['Plank', 'Core', 'other'],
   ['Ab Wheel Rollout', 'Core', 'other', ['abs']],
+  // Time-based holds & cardio — smart-detected into Time mode the first time you pick one.
+  ['Plank', 'Core', 'other', undefined, 'time'],
+  ['Weighted Plank', 'Core', 'other', undefined, 'time'],
+  ['Side Plank', 'Core', 'other', undefined, 'time'],
+  ['Hanging Leg Hold', 'Core', 'other', ['hanging hold'], 'time'],
+  ['Mountain Climbers', 'Core', 'other', undefined, 'time'],
+  ['Wall Sit', 'Legs', 'legs', undefined, 'time'],
+  ['Dead Hang', 'Back', 'pull', undefined, 'time'],
+  ['Treadmill Run', 'Cardio', 'other', ['treadmill', 'running'], 'time'],
+  ['Jump Rope', 'Cardio', 'other', ['skipping'], 'time'],
 ];
 
-export const CATALOG: Exercise[] = SEEDS.map(([name, group, split, aliases]) => ({
+export const CATALOG: Exercise[] = SEEDS.map(([name, group, split, aliases, defaultMode]) => ({
   id: slug(name),
   name,
   group,
   split,
   aliases,
+  defaultMode,
 }));
 
 /** Which training split a muscle group belongs to (used to suggest exercises for "Push A", "Legs B", …). */

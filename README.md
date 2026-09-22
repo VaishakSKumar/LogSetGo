@@ -57,6 +57,21 @@ Tabs mount when first opened and then stay alive, so scroll position, the calend
 - A "logged" exercise has at least one checked set. Exercises you picked (or loaded from a routine) but haven't logged yet stay in the panel's chips, not the feed.
 - Warm-ups are shown on the card (marked **W**) but never count toward sets or volume.
 
+### Reps or Time
+Every exercise logs as **Reps** (Set · Weight · Reps) or **Time** (Set · Weight · Duration), matching what it actually is:
+- **Smart default:** picking a known hold or cardio exercise (Plank, Weighted Plank, Side Plank, Hanging Leg Hold, Mountain Climbers, Wall Sit, Dead Hang, Treadmill Run, Jump Rope) opens it in Time mode automatically. Everything else defaults to Reps.
+- **The segmented toggle** at the top of the recorder switches a single exercise between them. It's per-exercise and sticks: next time you pick that exercise (any day), it opens in whichever mode you last set. Switching only changes rows you haven't logged yet today — anything already checked off keeps recording exactly what it was logged as, and other days are never touched.
+- **Duration entry:** type raw seconds ("70") or `MM:SS` ("1:10") — either way it settles on `1:10`. The ±/± steppers move in 5-second steps. The ghost still carries your last duration (and weight) forward, set to set and session to session, exactly like reps.
+- **Weighted holds** (a weighted plank, a loaded carry) keep the weight column; it defaults to 0 kg (bodyweight) rather than blank, so a plain hold needs only a duration.
+- **What changes with Time mode:** the exercise's card and the recorder's live readout swap "Volume" for **Time under tension** (the sum of your working sets' durations); a "PR" means the longest hold, not the heaviest weight. What doesn't change: the weekly volume chart, muscle balance, strength trend, personal records and weight goals are all rep-based only — a time-based exercise sits outside them, the same way warm-ups sit outside volume and PRs. Its own Progress panel instead shows your best and most recent hold and a small trend of past sessions; there's no goal card, since a kg target doesn't apply.
+
+### Custom workout day names
+A small green **+** sits beside the workout-day name (tap the day label itself, or the streak dots row, to see it). Tap it to name today's session:
+- **New workout day sheet:** a field (auto-focused, with a **✕** clear button) and preset chips (Push, Pull, Legs, Upper, Lower, Full Body, Cardio) — tap one to start from it, then keep typing to make it yours. **Save & Apply** creates the name, saves it for every future day, and switches today to it in one step, with a light haptic. **Cancel** discards it.
+- **The picker** (tap the day name) lists **Defaults** (the built-in Push A / Pull A / … set) and, once you've made one, **Your names** below them.
+- **Delete a custom name:** long-press its chip in the picker to arm a trash button in its place; tap the trash to remove it, or tap the chip again to cancel. Deleting a name only removes it from the picker — any day already logged under it keeps that label.
+- **Removing a built-in default:** the same long-press-then-trash gesture works on the **Defaults** chips (Push A, Upper, …) too. Since there's nothing to re-type, this hides it rather than deleting it for good — a **Restore defaults** link appears next to "Defaults" whenever one or more are hidden, and brings all of them back in one tap. Hiding every default replaces the grid with "All built-in names are hidden." Either way, today's own label is never touched.
+
 ### Backup, records and more
 | Feature | What it does |
 |---|---|
@@ -153,6 +168,10 @@ src/lib/routines.ts         plan builder + routine helpers (tested)
 src/lib/stats.ts            volume, records, muscle split, summary, goals (tested)
 src/lib/calc.ts             1RM, plates, warm-ups (tested)
 src/lib/session.ts          day feed, summary, "last time" text (tested)
+src/lib/daylabels.ts        custom workout-day names: normalize, add, remove (tested)
+src/components/sheets/AddDayNameSheet.tsx   "New workout day" sheet
+src/lib/duration.ts         seconds ⇄ "MM:SS" formatting and parsing (tested)
+src/components/session/ModeToggle.tsx       Reps / Time segmented control
 src/components/session/     BottomDrawer, WorkoutRecorderSheet, SummaryCard, ExerciseLogCard, SwipeToDelete, AddExerciseButton, ExerciseMenuSheet, AnimatedNumber
 src/lib/notify.ts, files.ts, diagnostics.ts   native-facing helpers (safe no-ops on web)
 src/__tests__/              UI tests (Jest + Testing Library)

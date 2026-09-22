@@ -10,11 +10,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { formatDuration, parseDurationInput } from '../lib/duration';
 import { haptic } from '../lib/haptics';
 import { resolveSet } from '../lib/progress';
 import { fmtDelta, fmtWeight, fromDisplay, roundDisplay, toDisplay } from '../lib/units';
 import { colors, motion, roundedFont } from '../theme';
-import type { Ghost, SetPerf, SetRow as SetRowData, Unit } from '../types';
+import type { Ghost, SetMode, SetPerf, SetRow as SetRowData, Unit } from '../types';
 import { CheckIcon } from './Icons';
 
 /* ─────────────── Column widths shared with the table header ─────────────── */
@@ -29,24 +30,54 @@ export const COL = {
 
 /* ─────────────── Numeric cell ─────────────── */
 
+/** How a NumberCell reads and writes its stored number. */
+type CellKind = 'weight' | 'count' | 'duration';
+
+const CELL: Record<CellKind, { format: (n: number) => string; parse: (text: string) => number | null; keyboard: 'decimal-pad' | 'number-pad' }> = {
+  weight: {
+    format: (n) => String(n),
+    parse: (t) => {
+      const n = parseFloat(t.replace(',', '.'));
+      return Number.isFinite(n) && n > 0 ? roundDisplay(n) : null;
+    },
+    keyboard: 'decimal-pad',
+  },
+  count: {
+    format: (n) => String(n),
+    parse: (t) => {
+      const n = parseFloat(t.replace(',', '.'));
+      return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+    },
+    keyboard: 'number-pad',
+  },
+  duration: {
+    format: formatDuration,
+    // Typing raw seconds ("70") or MM:SS ("1:10") both work — parseDurationInput handles either.
+    parse: parseDurationInput,
+    keyboard: 'number-pad',
+  },
+};
+
 interface NumberCellProps {
   value: number | null;
   ghost: number | null;
   locked: boolean;
-  decimal: boolean;
+  kind: CellKind;
   label: string;
   onCommit: (value: number | null) => void;
 }
 
 /**
- * Right-aligned numeric field.
+ * Right-aligned numeric field (weight, rep count, or MM:SS duration — `kind` picks how it formats
+ * and parses; the stored value is always a plain number, seconds for a duration).
  *  · empty + grey ghost  → one tap accepts the ghost
  *  · filled              → tap to type
  *  · locked (set logged) → read-only
  */
-function NumberCell({ value, ghost, locked, decimal, label, onCommit }: NumberCellProps) {
+function NumberCell({ value, ghost, locked, kind, label, onCommit }: NumberCellProps) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState('');
+  const { format, parse, keyboard } = CELL[kind];
 
   const isGhost = value == null && ghost != null;
   const shown = value ?? ghost;
@@ -58,14 +89,13 @@ function NumberCell({ value, ghost, locked, decimal, label, onCommit }: NumberCe
       onCommit(ghost);
       return;
     }
-    setText(value == null ? '' : String(value));
+    setText(value == null ? '' : kind === 'duration' ? format(value) : String(value));
     setEditing(true);
   };
 
   const finish = () => {
     setEditing(false);
-    const n = parseFloat(text.replace(',', '.'));
-    onCommit(Number.isFinite(n) && n > 0 ? (decimal ? roundDisplay(n) : Math.round(n)) : null);
+    onCommit(parse(text));
   };
 
   if (editing) {
@@ -77,12 +107,12 @@ function NumberCell({ value, ghost, locked, decimal, label, onCommit }: NumberCe
         onChangeText={setText}
         onBlur={finish}
         onSubmitEditing={finish}
-        keyboardType={decimal ? 'decimal-pad' : 'number-pad'}
+        keyboardType={kind === 'duration' ? 'numbers-and-punctuation' : keyboard}
         returnKeyType="done"
-        maxLength={6}
+        maxLength={kind === 'duration' ? 5 : 6}
         accessibilityLabel={label}
         placeholderTextColor={colors.ghost}
-        placeholder={shown != null ? String(shown) : '0'}
+        placeholder={shown != null ? (kind === 'duration' ? format(shown) : String(shown)) : kind === 'duration' ? '0:00' : '0'}
         className="h-11 rounded-xl border border-white/25 bg-fill px-2 text-right text-num tabular-nums text-label"
         style={{ fontFamily: roundedFont, outlineStyle: 'none' } as never}
       />
@@ -92,7 +122,7 @@ function NumberCell({ value, ghost, locked, decimal, label, onCommit }: NumberCe
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${label}: ${shown ?? 'empty'}${isGhost ? ', suggested, tap to accept' : ''}`}
+      accessibilityLabel={`${label}: ${shown == null ? 'empty' : kind === 'duration' ? format(shown) : shown}${isGhost ? ', suggested, tap to accept' : ''}`}
       disabled={locked}
       onPress={begin}
       className={`h-11 justify-center rounded-xl px-2 active:opacity-70 ${locked ? '' : 'bg-fill/70'}`}
@@ -101,7 +131,7 @@ function NumberCell({ value, ghost, locked, decimal, label, onCommit }: NumberCe
         className="text-right text-num tabular-nums"
         style={{ fontFamily: roundedFont, color: isGhost ? colors.ghost : shown == null ? colors.outline : colors.label }}
       >
-        {shown == null ? '–' : shown}
+        {shown == null ? '–' : kind === 'duration' ? format(shown) : shown}
       </Text>
     </Pressable>
   );
@@ -162,17 +192,19 @@ interface SetRowProps {
 }
 
 /** What changed vs the same set last session — shown under "Previous" once a set is logged. */
-function deltaOf(row: SetRowData, prev: SetPerf | undefined, unit: Unit): { text: string; positive: boolean } | null {
+function deltaOf(row: SetRowData, prev: SetPerf | undefined, unit: Unit, mode: SetMode): { text: string; positive: boolean } | null {
   if (row.pr) return { text: 'PR', positive: true };
   if (!prev || row.weight == null || row.reps == null) return null;
   const dw = row.weight - prev.weight;
   if (Math.abs(toDisplay(dw, unit)) >= 0.05) return { text: `${fmtDelta(dw, unit)} ${unit}`, positive: dw > 0 };
   const dr = row.reps - prev.reps;
-  if (dr !== 0) return { text: `${dr > 0 ? '+' : '−'}${Math.abs(dr)} rep${Math.abs(dr) > 1 ? 's' : ''}`, positive: dr > 0 };
-  return null;
+  if (dr === 0) return null;
+  if (mode === 'time') return { text: `${dr > 0 ? '+' : '−'}${formatDuration(Math.abs(dr))}`, positive: dr > 0 };
+  return { text: `${dr > 0 ? '+' : '−'}${Math.abs(dr)} rep${Math.abs(dr) > 1 ? 's' : ''}`, positive: dr > 0 };
 }
 
 function SetRowView({ index, row, prev, ghost, unit, active, onChange, onLog, onDetails }: SetRowProps) {
+  const mode = row.mode ?? 'reps';
   const glow = useSharedValue(0);
   const pop = useSharedValue(1);
   const shake = useSharedValue(0);
@@ -198,7 +230,7 @@ function SetRowView({ index, row, prev, ghost, unit, active, onChange, onLog, on
 
   const resolved = resolveSet(row, ghost);
   const done = row.done;
-  const delta = done ? deltaOf(row, prev, unit) : null;
+  const delta = done ? deltaOf(row, prev, unit, mode) : null;
 
   const press = () => {
     if (done) {
@@ -248,7 +280,7 @@ function SetRowView({ index, row, prev, ghost, unit, active, onChange, onLog, on
 
         <View className={`${COL.previous} justify-center`}>
           <Text className="text-body tabular-nums text-muted/70" numberOfLines={1}>
-            {prev ? `${fmtWeight(prev.weight, unit)} × ${prev.reps}` : '—'}
+            {prev ? (mode === 'time' ? formatDuration(prev.reps) : `${fmtWeight(prev.weight, unit)} × ${prev.reps}`) : '—'}
           </Text>
           {delta ? (
             <Text className="text-caption font-semibold tabular-nums" style={{ color: delta.positive ? colors.accent : colors.muted }}>
@@ -263,18 +295,18 @@ function SetRowView({ index, row, prev, ghost, unit, active, onChange, onLog, on
             value={weightDisplay}
             ghost={weightGhost}
             locked={done}
-            decimal
+            kind="weight"
             onCommit={(v) => onChange(row.id, 'weight', v == null ? null : fromDisplay(v, unit))}
           />
         </View>
 
         <View className={`${COL.reps} ml-2`}>
           <NumberCell
-            label={`Set ${index + 1} reps`}
+            label={`Set ${index + 1} ${mode === 'time' ? 'duration' : 'reps'}`}
             value={row.reps}
             ghost={ghost.reps}
             locked={done}
-            decimal={false}
+            kind={mode === 'time' ? 'duration' : 'count'}
             onCommit={(v) => onChange(row.id, 'reps', v)}
           />
         </View>

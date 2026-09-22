@@ -178,18 +178,18 @@ describe('weekly rollups (demo history)', () => {
 
 describe('reducer', () => {
   const at = 1_000;
-  const base = (): AppData => reducer(initialData, { type: 'select', id: 'barbell-bench-press', date: TODAY });
+  const base = (): AppData => reducer(initialData, { type: 'select', id: 'barbell-bench-press', date: TODAY, mode: 'reps' });
   const ids = (s: AppData) => s.sessions[TODAY].exercises['barbell-bench-press'].map((r) => r.id);
 
   it('select seeds 3 empty rows for a brand-new exercise, and a row per previous set otherwise', () => {
     assert.equal(ids(base()).length, 3);
 
     const demo = buildDemoData(TODAY);
-    const s = reducer({ ...demo, activeExerciseId: null }, { type: 'select', id: 'lat-pulldown', date: TODAY });
+    const s = reducer({ ...demo, activeExerciseId: null }, { type: 'select', id: 'lat-pulldown', date: TODAY, mode: 'reps' });
     assert.equal(s.sessions[TODAY].exercises['lat-pulldown'].length, 3);
     const four = reducer(
       { ...initialData, sessions: { '2026-09-14': { label: 'Push A', exercises: { x: [1, 2, 3, 4].map((n) => ({ ...row(String(n), 50, 10, true) })) } } } },
-      { type: 'select', id: 'x', date: TODAY },
+      { type: 'select', id: 'x', date: TODAY, mode: 'reps' },
     );
     assert.equal(four.sessions[TODAY].exercises.x.length, 4);
   });
@@ -197,7 +197,7 @@ describe('reducer', () => {
   it('selecting again keeps rows that already exist', () => {
     let s = base();
     s = reducer(s, { type: 'toggle', date: TODAY, rowId: '1', weight: 60, reps: 8, at });
-    s = reducer(s, { type: 'select', id: 'barbell-bench-press', date: TODAY });
+    s = reducer(s, { type: 'select', id: 'barbell-bench-press', date: TODAY, mode: 'reps' });
     assert.equal(s.sessions[TODAY].exercises['barbell-bench-press'][0].done, true);
   });
 
@@ -240,7 +240,7 @@ describe('reducer', () => {
     s = reducer(s, { type: 'toggle', date: TODAY, rowId: '2', weight: 60, reps: 8, at });
     s = reducer(s, { type: 'removeSet', date: TODAY });
     assert.equal(ids(s).length, 2); // last row is logged
-    let one = reducer(initialData, { type: 'select', id: 'y', date: TODAY });
+    let one = reducer(initialData, { type: 'select', id: 'y', date: TODAY, mode: 'reps' });
     for (let i = 0; i < 5; i++) one = reducer(one, { type: 'removeSet', date: TODAY });
     assert.equal(one.sessions[TODAY].exercises.y.length, 1); // 3 → 1, then it stops
   });

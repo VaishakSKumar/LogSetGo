@@ -14,8 +14,9 @@ import { AppState } from 'react-native';
 import { CATALOG, slug, splitOfGroup } from '../data/catalog';
 import { dateKey } from '../lib/dates';
 import { buildDemoData } from '../lib/demo';
-import { buildHistory, buildRecents, defaultLabelFor } from '../lib/progress';
-import type { AppData, Exercise, Goal, HistoryEntry, MuscleGroup, Prefs, Routine, SetPerf, SetRow, Unit } from '../types';
+import { normalizeDayLabel } from '../lib/daylabels';
+import { buildDurationHistory, buildHistory, buildRecents, defaultLabelFor } from '../lib/progress';
+import type { AppData, Exercise, Goal, HistoryEntry, MuscleGroup, Prefs, Routine, SetMode, SetPerf, SetRow, Unit } from '../types';
 import { normalizeAppData } from '../lib/appdata';
 import { initialData, reducer, type Field } from './reducer';
 
@@ -31,6 +32,16 @@ export interface GymActions {
   removeSet(): void;
   fillSets(values: SetPerf[]): void;
   setLabel(label: string): void;
+  /** Your Reps-vs-Time choice for one exercise, remembered from now on. Today's not-yet-logged rows switch immediately. */
+  setExerciseMode(exerciseId: string, mode: SetMode): void;
+  /** Saves a custom workout day name and applies it to the day being logged, in one step. No-op for blank input. */
+  addDayLabel(name: string): void;
+  /** Removes a custom day name from the picker. Days already logged under it keep their label. */
+  deleteDayLabel(label: string): void;
+  /** Hides a built-in day name from the picker. Reversible — see restoreDayLabels. */
+  hideDayLabel(label: string): void;
+  /** Brings back every hidden built-in day name. */
+  restoreDayLabels(): void;
   setUnit(unit: Unit): void;
   /** Which calendar date the workout screen is logging. `null` follows the real today. */
   setWorkDate(date: string | null): void;
@@ -64,7 +75,10 @@ interface GymContextValue {
   selectionCount: number;
   exercises: Exercise[];
   byId: Map<string, Exercise>;
+  /** Rep-based history: e1RM, PRs, suggestions, records and goals all read from this. */
   history: Record<string, HistoryEntry[]>;
+  /** Time-based history (duration-in-seconds as `reps`), for "last time" ghosts and hold PRs. */
+  durationHistory: Record<string, HistoryEntry[]>;
   recents: ReturnType<typeof buildRecents>;
   label: string;
   active: Exercise | null;
@@ -144,22 +158,30 @@ export function GymProvider({ children }: { children: ReactNode }) {
   const exercises = useMemo(() => [...data.customExercises, ...CATALOG], [data.customExercises]);
   const byId = useMemo(() => new Map(exercises.map((e) => [e.id, e])), [exercises]);
   const history = useMemo(() => buildHistory(data.sessions), [data.sessions]);
+  const durationHistory = useMemo(() => buildDurationHistory(data.sessions), [data.sessions]);
   const recents = useMemo(() => buildRecents(data.sessions), [data.sessions]);
 
   const active = (data.activeExerciseId && byId.get(data.activeExerciseId)) || null;
   const rows = (active && data.sessions[today]?.exercises[active.id]) || EMPTY_ROWS;
   const label = data.sessions[today]?.label ?? defaultLabelFor(today);
 
+  /** Your saved preference for this exercise, else the catalog's smart-detected default, else reps. */
+  const resolveMode = (id: string): SetMode => {
+    const d = dataRef.current;
+    return d.exerciseModes[id] ?? d.customExercises.find((e) => e.id === id)?.defaultMode ?? CATALOG.find((e) => e.id === id)?.defaultMode ?? 'reps';
+  };
+
   // A new day keeps your exercise selected, with fresh rows.
   useEffect(() => {
-    if (ready && active && rows.length === 0) dispatch({ type: 'select', id: active.id, date: today });
+    if (ready && active && rows.length === 0) dispatch({ type: 'select', id: active.id, date: today, mode: resolveMode(active.id) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, active, rows.length, today]);
 
   const actions = useMemo<GymActions>(
     () => ({
       selectExercise: (id) => {
         setSelectionCount((n) => n + 1);
-        dispatch({ type: 'select', id, date: todayRef.current });
+        dispatch({ type: 'select', id, date: todayRef.current, mode: resolveMode(id) });
       },
       setField: (rowId, field, value) =>
         dispatch({ type: 'setField', date: todayRef.current, rowId, field, value }),
@@ -169,6 +191,16 @@ export function GymProvider({ children }: { children: ReactNode }) {
       removeSet: () => dispatch({ type: 'removeSet', date: todayRef.current }),
       fillSets: (values) => dispatch({ type: 'fill', date: todayRef.current, values }),
       setLabel: (label) => dispatch({ type: 'label', date: todayRef.current, label }),
+      setExerciseMode: (exerciseId, mode) => dispatch({ type: 'setExerciseMode', date: todayRef.current, exerciseId, mode }),
+      addDayLabel: (name) => {
+        const label = normalizeDayLabel(name);
+        if (!label) return;
+        dispatch({ type: 'addDayLabel', label });
+        dispatch({ type: 'label', date: todayRef.current, label });
+      },
+      deleteDayLabel: (label) => dispatch({ type: 'deleteDayLabel', label }),
+      hideDayLabel: (label) => dispatch({ type: 'hideDayLabel', label }),
+      restoreDayLabels: () => dispatch({ type: 'restoreDayLabels' }),
       setUnit: (unit) => dispatch({ type: 'unit', unit }),
       setWorkDate: (date) => setWorkDateState(date),
       replaceAll: (data) => dispatch({ type: 'hydrate', data }),
@@ -176,7 +208,8 @@ export function GymProvider({ children }: { children: ReactNode }) {
       deleteRoutine: (id) => dispatch({ type: 'deleteRoutine', id }),
       startRoutine: (routine) => {
         setSelectionCount((n) => n + 1);
-        dispatch({ type: 'startRoutine', date: todayRef.current, routine });
+        const modes = Object.fromEntries(routine.items.map((it) => [it.exerciseId, resolveMode(it.exerciseId)]));
+        dispatch({ type: 'startRoutine', date: todayRef.current, routine, modes });
       },
       setGoal: (exerciseId, goal) => dispatch({ type: 'setGoal', exerciseId, goal }),
       setPrefs: (prefs) => dispatch({ type: 'setPrefs', prefs }),
@@ -199,8 +232,8 @@ export function GymProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<GymContextValue>(
-    () => ({ ready, data, today, realToday, selectionCount, exercises, byId, history, recents, label, active, rows, actions }),
-    [ready, data, today, realToday, selectionCount, exercises, byId, history, recents, label, active, rows, actions],
+    () => ({ ready, data, today, realToday, selectionCount, exercises, byId, history, durationHistory, recents, label, active, rows, actions }),
+    [ready, data, today, realToday, selectionCount, exercises, byId, history, durationHistory, recents, label, active, rows, actions],
   );
 
   return <GymContext.Provider value={value}>{children}</GymContext.Provider>;

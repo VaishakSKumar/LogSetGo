@@ -6,16 +6,39 @@ type Sessions = Record<string, Session>;
 
 /* ─────────────────────────── History ─────────────────────────── */
 
-/** A finished working set. Warm-ups are deliberately excluded from history, volume, PRs and suggestions. */
+/** A finished set of either mode. Warm-ups are deliberately excluded from history, volume, PRs and suggestions. */
 export const isLogged = (r: SetRow): r is SetRow & { weight: number; reps: number } =>
   r.done && r.weight != null && r.reps != null && !r.warmup;
 
-/** Every completed set you have ever logged, per exercise, newest session first. */
+/** A finished set is time-based when it says so; absent `mode` always means a rep set (older data). */
+export const isTimeSet = (r: SetRow) => r.mode === 'time';
+
+/** kg lifted by one logged set. Time-based sets never contribute — their second number is seconds, not reps. */
+export const setKg = (r: SetRow & { weight: number; reps: number }) => (isTimeSet(r) ? 0 : r.weight * r.reps);
+
+/**
+ * Every completed **rep-based** set you've ever logged, per exercise, newest session first. This is
+ * the strength history: e1RM, PRs, progressive-overload suggestions, records and goals all read from
+ * it, so a time-based set (its "reps" is really a duration) never gets treated as a 45-rep set.
+ * Time-based sets have their own parallel history — see `buildDurationHistory`.
+ */
 export function buildHistory(sessions: Sessions): Record<string, HistoryEntry[]> {
+  return buildHistoryOf(sessions, (r) => !isTimeSet(r));
+}
+
+/**
+ * The rep-shaped history of time-based sets only (weight + duration-in-seconds as `reps`), used for
+ * "last time" ghosts and the hold-based Progress panel — never for e1RM/PR/kg maths.
+ */
+export function buildDurationHistory(sessions: Sessions): Record<string, HistoryEntry[]> {
+  return buildHistoryOf(sessions, isTimeSet);
+}
+
+function buildHistoryOf(sessions: Sessions, matches: (r: SetRow) => boolean): Record<string, HistoryEntry[]> {
   const out: Record<string, HistoryEntry[]> = {};
   for (const date of Object.keys(sessions).sort().reverse()) {
     for (const [exerciseId, rows] of Object.entries(sessions[date].exercises)) {
-      const sets = rows.filter(isLogged).map((r) => ({ weight: r.weight, reps: r.reps }));
+      const sets = rows.filter((r) => isLogged(r) && matches(r)).map((r) => ({ weight: r.weight!, reps: r.reps! }));
       if (sets.length) (out[exerciseId] ??= []).push({ date, sets });
     }
   }
@@ -72,15 +95,29 @@ export function bestsOf(history: HistoryEntry[] | undefined): Bests | null {
   return heaviest ? { heaviest, e1rm: best } : null;
 }
 
-/** Best e1RM among logged sets of an exercise, ignoring one row (the one being logged). */
+/** Best e1RM among logged rep-based sets of an exercise, ignoring one row (the one being logged). */
 export function bestE1rmExcluding(sessions: Sessions, exerciseId: string, excludeRowId: string, excludeDate: string) {
   let best = 0;
   let any = false;
   for (const [date, session] of Object.entries(sessions)) {
     for (const r of session.exercises[exerciseId] ?? []) {
-      if (!isLogged(r) || (date === excludeDate && r.id === excludeRowId)) continue;
+      if (!isLogged(r) || isTimeSet(r) || (date === excludeDate && r.id === excludeRowId)) continue;
       any = true;
       best = Math.max(best, e1rm(r.weight, r.reps));
+    }
+  }
+  return any ? best : null;
+}
+
+/** Longest hold (seconds) among logged time-based sets of an exercise, ignoring one row — the time-mode analog of `bestE1rmExcluding`. */
+export function bestDurationExcluding(sessions: Sessions, exerciseId: string, excludeRowId: string, excludeDate: string) {
+  let best = 0;
+  let any = false;
+  for (const [date, session] of Object.entries(sessions)) {
+    for (const r of session.exercises[exerciseId] ?? []) {
+      if (!isLogged(r) || !isTimeSet(r) || (date === excludeDate && r.id === excludeRowId)) continue;
+      any = true;
+      best = Math.max(best, r.reps);
     }
   }
   return any ? best : null;
@@ -202,7 +239,7 @@ export function weekTotals(sessions: Sessions, startKey: string, throughIdx = 6)
     let any = false;
     for (const rows of Object.values(session.exercises)) {
       for (const r of rows.filter(isLogged)) {
-        t.volume += r.weight * r.reps;
+        t.volume += setKg(r);
         t.sets += 1;
         any = true;
       }

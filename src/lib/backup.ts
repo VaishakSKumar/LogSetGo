@@ -2,6 +2,7 @@ import type { AppData, Exercise } from '../types';
 import { STATUSES, type Marks, type Status } from './attendance';
 import { mergeAppData, normalizeAppData } from './appdata';
 import { emptyBody, parseBody, type BodyData } from './body';
+import { formatDuration } from './duration';
 import { defaultTimerSettings, parseTimerSettings, type TimerSettings } from './timer';
 
 export const BACKUP_APP = 'LogSetGo';
@@ -115,16 +116,24 @@ const cell = (v: string | number | boolean | null | undefined) => {
 };
 const row = (cols: (string | number | boolean | null | undefined)[]) => cols.map(cell).join(',');
 
-/** One line per logged set, ready for a spreadsheet. Weights are kg. */
+/**
+ * One line per logged set, ready for a spreadsheet. Weights are kg. `reps` is always the raw
+ * number (seconds for a time-based set, so sums still work); `duration` and `mode` say when it is.
+ */
 export function setsToCsv(gym: AppData, exercises: Exercise[]): string {
   const names = new Map(exercises.map((e) => [e.id, e.name]));
-  const lines = [row(['date', 'workout', 'exercise', 'set', 'weight_kg', 'reps', 'warmup', 'rpe', 'note'])];
+  const lines = [row(['date', 'workout', 'exercise', 'set', 'weight_kg', 'reps', 'duration', 'mode', 'warmup', 'rpe', 'note'])];
   for (const date of Object.keys(gym.sessions).sort()) {
     const s = gym.sessions[date];
     for (const [id, rows] of Object.entries(s.exercises)) {
       rows
         .filter((r) => r.done)
-        .forEach((r, i) => lines.push(row([date, s.label, names.get(id) ?? id, i + 1, r.weight, r.reps, r.warmup ? 'yes' : '', r.rpe, r.note])));
+        .forEach((r, i) => {
+          const isTime = r.mode === 'time';
+          lines.push(
+            row([date, s.label, names.get(id) ?? id, i + 1, r.weight, r.reps, isTime ? formatDuration(r.reps ?? 0) : '', isTime ? 'time' : 'reps', r.warmup ? 'yes' : '', r.rpe, r.note]),
+          );
+        });
     }
   }
   return lines.join('\r\n') + '\r\n';

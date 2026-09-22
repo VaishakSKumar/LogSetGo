@@ -21,6 +21,8 @@ module.exports = {
         display: ['34px', { lineHeight: '41px', letterSpacing: '-0.5px', fontWeight: '700' }],
         h1: ['28px', { lineHeight: '34px', letterSpacing: '-0.5px', fontWeight: '700' }],
         h2: ['17px', { lineHeight: '22px', letterSpacing: '-0.2px', fontWeight: '600' }],
+        /** the active workout-day name (SF Pro Display Semibold) */
+        dayname: ['20px', { lineHeight: '25px', letterSpacing: '-0.2px', fontWeight: '600' }],
         num: ['20px', { lineHeight: '24px', fontWeight: '500' }],
         body: ['15px', { lineHeight: '20px', fontWeight: '400' }],
         /** session summary metrics (SF Pro Rounded, bold) */

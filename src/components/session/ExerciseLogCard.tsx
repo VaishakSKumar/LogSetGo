@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition, SlideOutLeft } from 'react-native-reanimated';
 
+import { formatDuration } from '../../lib/duration';
 import { haptic } from '../../lib/haptics';
 import type { LoggedExercise } from '../../lib/session';
 import { fmtVolume, roundDisplay, toDisplay } from '../../lib/units';
@@ -69,39 +70,49 @@ export function ExerciseLogCard({ entry, exercise, unit, previous, onMenu, onDel
           <View className="mb-1 mt-3 flex-row items-center px-1">
             <Head className="w-10">Set</Head>
             <Head className="flex-1 text-right">{unit}</Head>
-            <Head className="w-16 text-right">Reps</Head>
+            <Head className="w-16 text-right">{entry.mode === 'time' ? 'Time' : 'Reps'}</Head>
             <View className="w-11" />
           </View>
 
-          {entry.sets.map(({ row, number }) => (
-            <View
-              key={row.id}
-              className="min-h-[40px] flex-row items-center px-1"
-              style={{ borderTopWidth: 1, borderTopColor: colors.line }}
-              accessible
-              accessibilityLabel={`Set ${row.warmup ? 'warm-up' : number}: ${roundDisplay(toDisplay(row.weight ?? 0, unit))} ${unit} for ${row.reps} reps, completed${row.pr ? ', personal record' : ''}`}
-            >
-              <Text className="w-10 text-body tabular-nums" style={{ color: row.warmup ? colors.warn : colors.muted }}>
-                {row.warmup ? 'W' : number}
-              </Text>
-              <Text className="flex-1 text-right text-body tabular-nums text-label" style={rounded}>
-                {roundDisplay(toDisplay(row.weight ?? 0, unit))}
-              </Text>
-              <Text className="w-16 text-right text-body tabular-nums text-label" style={rounded}>
-                {row.reps}
-              </Text>
-              <View className="w-11 items-end">
-                <View className="h-6 w-6 items-center justify-center rounded-full" style={{ backgroundColor: colors.accent }}>
-                  <CheckIcon size={13} color="#000" stroke={3.4} />
+          {entry.sets.map(({ row, number }) => {
+            const isTime = (row.mode ?? 'reps') === 'time';
+            return (
+              <View
+                key={row.id}
+                className="min-h-[40px] flex-row items-center px-1"
+                style={{ borderTopWidth: 1, borderTopColor: colors.line }}
+                accessible
+                accessibilityLabel={`Set ${row.warmup ? 'warm-up' : number}: ${roundDisplay(toDisplay(row.weight ?? 0, unit))} ${unit}${isTime ? ` for ${formatDuration(row.reps ?? 0)}` : ` for ${row.reps} reps`}, completed${row.pr ? ', personal record' : ''}`}
+              >
+                <Text className="w-10 text-body tabular-nums" style={{ color: row.warmup ? colors.warn : colors.muted }}>
+                  {row.warmup ? 'W' : number}
+                </Text>
+                <Text className="flex-1 text-right text-body tabular-nums text-label" style={rounded}>
+                  {roundDisplay(toDisplay(row.weight ?? 0, unit))}
+                </Text>
+                <Text className="w-16 text-right text-body tabular-nums text-label" style={rounded}>
+                  {isTime ? formatDuration(row.reps ?? 0) : row.reps}
+                </Text>
+                <View className="w-11 items-end">
+                  <View className="h-6 w-6 items-center justify-center rounded-full" style={{ backgroundColor: colors.accent }}>
+                    <CheckIcon size={13} color="#000" stroke={3.4} />
+                  </View>
                 </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
 
-          <Text className="mt-2 text-meta text-muted" accessibilityLabel={`Volume ${fmtVolume(entry.volume, unit)} ${unit}`}>
-            Volume {fmtVolume(entry.volume, unit)} {unit}
-            {entry.workingSets !== entry.sets.length ? ' · warm-ups not counted' : ''}
-          </Text>
+          {entry.mode === 'time' ? (
+            <Text className="mt-2 text-meta text-muted" accessibilityLabel={`Time under tension ${formatDuration(entry.tutSeconds)}`}>
+              Time under tension {formatDuration(entry.tutSeconds)}
+              {entry.workingSets !== entry.sets.length ? ' · warm-ups not counted' : ''}
+            </Text>
+          ) : (
+            <Text className="mt-2 text-meta text-muted" accessibilityLabel={`Volume ${fmtVolume(entry.volume, unit)} ${unit}`}>
+              Volume {fmtVolume(entry.volume, unit)} {unit}
+              {entry.workingSets !== entry.sets.length ? ' · warm-ups not counted' : ''}
+            </Text>
+          )}
         </View>
       </SwipeToDelete>
     </Animated.View>

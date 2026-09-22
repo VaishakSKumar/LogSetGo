@@ -20,7 +20,8 @@ import { WeeklyProgressCard } from '../components/WeeklyProgressCard';
 import { relativeDay } from '../lib/dates';
 import { haptic } from '../lib/haptics';
 import { ghostFor, previousEntry } from '../lib/progress';
-import { exerciseVolume, formatSets, loggedExercises, summarizeDay, type LoggedExercise } from '../lib/session';
+import { exerciseTut, exerciseVolume, formatSets, loggedExercises, summarizeDay, type LoggedExercise } from '../lib/session';
+import type { SetMode } from '../types';
 import { useGym } from '../store/gym';
 import { useTimer } from '../store/timer';
 import { colors } from '../theme';
@@ -47,7 +48,7 @@ interface MenuState {
  * Logs against `today` from the store: the real today, or whichever date the calendar routed here.
  */
 export function WorkoutScreen() {
-  const { active, rows, history, data, today, realToday, byId, selectionCount, actions } = useGym();
+  const { active, rows, history, durationHistory, data, today, realToday, byId, selectionCount, actions } = useGym();
   const { timer, settings, controls } = useTimer();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
@@ -68,7 +69,11 @@ export function WorkoutScreen() {
   const summary = useMemo(() => summarizeDay(session), [session]);
   const hasLogged = logged.length > 0;
 
-  const entries = active ? history[active.id] : undefined;
+  /** Your saved preference, else the catalog's smart-detected default, else Reps. */
+  const modeOf = (id: string) => data.exerciseModes[id] ?? byId.get(id)?.defaultMode ?? 'reps';
+  const mode: SetMode = active ? modeOf(active.id) : 'reps';
+
+  const entries = active ? (mode === 'time' ? durationHistory[active.id] : history[active.id]) : undefined;
   const prevSets = useMemo(() => previousEntry(entries, today)?.sets, [entries, today]);
   const ghosts = useMemo(() => rows.map((_, i) => ghostFor(i, rows, prevSets)), [rows, prevSets]);
 
@@ -76,8 +81,9 @@ export function WorkoutScreen() {
   const activeRow = activeIndex >= 0 ? rows[activeIndex] : undefined;
 
   const lastTimeFor = (id: string) => {
-    const prev = previousEntry(history[id], today);
-    return prev ? `Last time · ${relativeDay(prev.date, today)} · ${formatSets(prev.sets, unit)}` : null;
+    const m = modeOf(id);
+    const prev = previousEntry(m === 'time' ? durationHistory[id] : history[id], today);
+    return prev ? `Last time · ${relativeDay(prev.date, today)} · ${formatSets(prev.sets, unit, m)}` : null;
   };
 
   // Picking an exercise (search, chip, card menu) or starting a routine opens the recorder. If another
@@ -244,10 +250,13 @@ export function WorkoutScreen() {
         lastTime={active ? lastTimeFor(active.id) : null}
         unit={unit}
         step={step}
+        mode={mode}
+        onModeChange={(m) => active && actions.setExerciseMode(active.id, m)}
         today={today}
         activeIndex={activeIndex}
         activeRow={activeRow}
         exerciseKg={exerciseVolume(rows)}
+        tutSeconds={exerciseTut(rows)}
         dayKg={summary.volume}
         onChange={actions.setField}
         onLog={logSet}

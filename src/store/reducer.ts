@@ -1,18 +1,21 @@
 import {
+  bestDurationExcluding,
   bestE1rmExcluding,
   buildHistory,
   defaultLabelFor,
   e1rm,
+  isTimeSet,
   previousEntry,
 } from '../lib/progress';
 import { EMPTY_APP_DATA } from '../lib/appdata';
-import { type AppData, type Exercise, type Goal, type Prefs, type Routine, type SetPerf, type SetRow, type Session, type Unit } from '../types';
+import { addCustomDayLabel, hideDefaultDayLabel, removeCustomDayLabel } from '../lib/daylabels';
+import { type AppData, type Exercise, type Goal, type Prefs, type Routine, type SetMode, type SetPerf, type SetRow, type Session, type Unit } from '../types';
 
 export type Field = 'weight' | 'reps';
 
 export type Action =
   | { type: 'hydrate'; data: AppData }
-  | { type: 'select'; id: string; date: string }
+  | { type: 'select'; id: string; date: string; mode: SetMode }
   | { type: 'setField'; date: string; rowId: string; field: Field; value: number | null }
   | { type: 'toggle'; date: string; rowId: string; weight: number; reps: number; at: number }
   | { type: 'addSet'; date: string }
@@ -23,21 +26,28 @@ export type Action =
   | { type: 'createExercise'; exercise: Exercise }
   | { type: 'addRoutine'; routine: Routine }
   | { type: 'deleteRoutine'; id: string }
-  | { type: 'startRoutine'; date: string; routine: Routine }
+  | { type: 'startRoutine'; date: string; routine: Routine; modes: Record<string, SetMode> }
   | { type: 'setGoal'; exerciseId: string; goal: Goal | null }
   | { type: 'setPrefs'; prefs: Partial<Prefs> }
   | { type: 'setSetMeta'; date: string; rowId: string; meta: { warmup?: boolean; rpe?: number | null; note?: string } }
   | { type: 'setExerciseNote'; date: string; exerciseId: string; note: string }
   | { type: 'removeExercise'; date: string; exerciseId: string }
-  | { type: 'deselect' };
+  | { type: 'deselect' }
+  | { type: 'addDayLabel'; label: string }
+  | { type: 'deleteDayLabel'; label: string }
+  | { type: 'hideDayLabel'; label: string }
+  | { type: 'restoreDayLabels' }
+  | { type: 'setExerciseMode'; date: string; exerciseId: string; mode: SetMode };
 
 export const initialData: AppData = EMPTY_APP_DATA;
 
-const newRow = (rows: SetRow[]): SetRow => ({
+/** A fresh row. Time-based sets start at 0 kg (bodyweight) rather than blank, so a plain hold needs only a duration. */
+const newRow = (rows: SetRow[], mode: SetMode = 'reps'): SetRow => ({
   id: String(rows.reduce((m, r) => Math.max(m, Number(r.id) || 0), 0) + 1),
-  weight: null,
+  weight: mode === 'time' ? 0 : null,
   reps: null,
   done: false,
+  mode,
 });
 
 function withSession(state: AppData, date: string): Session {
@@ -56,6 +66,18 @@ function updateRows(state: AppData, date: string, fn: (rows: SetRow[]) => SetRow
   };
 }
 
+type ToggleAction = Extract<Action, { type: 'toggle' }>;
+
+const isNewE1rm = (state: AppData, exerciseId: string, a: ToggleAction) => {
+  const prior = bestE1rmExcluding(state.sessions, exerciseId, a.rowId, a.date);
+  return prior !== null && e1rm(a.weight, a.reps) > prior + 1e-6;
+};
+
+const isNewLongestHold = (state: AppData, exerciseId: string, a: ToggleAction) => {
+  const prior = bestDurationExcluding(state.sessions, exerciseId, a.rowId, a.date);
+  return prior !== null && a.reps > prior;
+};
+
 export function reducer(state: AppData, action: Action): AppData {
   switch (action.type) {
     case 'hydrate':
@@ -66,11 +88,12 @@ export function reducer(state: AppData, action: Action): AppData {
       const existing = withSession(state, action.date).exercises[action.id];
       if (existing?.length) return next;
       // Start with as many empty rows as you did last time (min 3), ghosted from history.
-      const last = previousEntry(buildHistory(state.sessions)[action.id], action.date);
+      // (A rep-based history only has rep sessions, so a first-ever Time selection falls back to 3.)
+      const last = action.mode === 'reps' ? previousEntry(buildHistory(state.sessions)[action.id], action.date) : undefined;
       const count = Math.max(last?.sets.length ?? 3, 1);
       return updateRows(next, action.date, () => {
         const rows: SetRow[] = [];
-        for (let i = 0; i < count; i++) rows.push(newRow(rows));
+        for (let i = 0; i < count; i++) rows.push(newRow(rows, action.mode));
         return rows;
       });
     }
@@ -83,12 +106,12 @@ export function reducer(state: AppData, action: Action): AppData {
     case 'toggle': {
       const id = state.activeExerciseId;
       if (!id) return state;
-      const prior = bestE1rmExcluding(state.sessions, id, action.rowId, action.date);
       return updateRows(state, action.date, (rows) =>
         rows.map((r) => {
           if (r.id !== action.rowId) return r;
           if (r.done) return { ...r, done: false, at: undefined, pr: undefined };
-          const pr = !r.warmup && prior !== null && e1rm(action.weight, action.reps) > prior + 1e-6;
+          // PR means "beat your best e1RM" for a rep set, or "held it longer than ever" for a time set.
+          const pr = !r.warmup && (isTimeSet(r) ? isNewLongestHold(state, id, action) : isNewE1rm(state, id, action));
           return { ...r, weight: action.weight, reps: action.reps, done: true, at: action.at, pr };
         }),
       );
@@ -97,8 +120,8 @@ export function reducer(state: AppData, action: Action): AppData {
     case 'addSet':
       return updateRows(state, action.date, (rows) => {
         const last = rows[rows.length - 1];
-        // A new set starts from the set before it (weight and reps), so repeating it is one tap.
-        return [...rows, last ? { ...newRow(rows), weight: last.weight, reps: last.reps } : newRow(rows)];
+        // A new set starts from the set before it (weight, duration/reps and mode), so repeating it is one tap.
+        return [...rows, last ? { ...newRow(rows, last.mode), weight: last.weight, reps: last.reps } : newRow(rows)];
       });
 
     case 'removeSet':
@@ -132,8 +155,9 @@ export function reducer(state: AppData, action: Action): AppData {
       const exercises = { ...session.exercises };
       for (const item of action.routine.items) {
         if (exercises[item.exerciseId]?.length) continue;
+        const mode = action.modes[item.exerciseId] ?? 'reps';
         const rows: SetRow[] = [];
-        for (let i = 0; i < Math.max(1, item.sets); i++) rows.push(newRow(rows));
+        for (let i = 0; i < Math.max(1, item.sets); i++) rows.push(newRow(rows, mode));
         exercises[item.exerciseId] = rows;
       }
       return {
@@ -197,5 +221,28 @@ export function reducer(state: AppData, action: Action): AppData {
       return state.customExercises.some((e) => e.id === action.exercise.id)
         ? state
         : { ...state, customExercises: [...state.customExercises, action.exercise] };
+
+    case 'addDayLabel':
+      return { ...state, customDayLabels: addCustomDayLabel(state.customDayLabels, action.label) };
+
+    case 'deleteDayLabel':
+      return { ...state, customDayLabels: removeCustomDayLabel(state.customDayLabels, action.label) };
+
+    case 'hideDayLabel':
+      return { ...state, hiddenDayLabels: hideDefaultDayLabel(state.hiddenDayLabels, action.label) };
+
+    case 'restoreDayLabels':
+      return state.hiddenDayLabels.length ? { ...state, hiddenDayLabels: [] } : state;
+
+    case 'setExerciseMode': {
+      const exerciseModes = { ...state.exerciseModes, [action.exerciseId]: action.mode };
+      const session = state.sessions[action.date];
+      const rows = session && session.exercises[action.exerciseId];
+      if (!session || !rows) return { ...state, exerciseModes };
+      // Only today's not-yet-logged rows switch columns immediately; anything already checked off
+      // keeps recording exactly what it was logged as, and other days are never touched.
+      const next = rows.map((r) => (r.done ? r : { ...r, mode: action.mode, weight: r.weight ?? (action.mode === 'time' ? 0 : null) }));
+      return { ...state, exerciseModes, sessions: { ...state.sessions, [action.date]: { ...session, exercises: { ...session.exercises, [action.exerciseId]: next } } } };
+    }
   }
 }

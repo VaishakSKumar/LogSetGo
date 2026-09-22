@@ -1,6 +1,6 @@
 {
   "name": "minimalist-gym-tracker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -19,7 +19,8 @@
     "preview:web": "node scripts/serve-web.js",
     "qa:web": "node scripts/build-web.js",
     "test:ui": "jest",
-    "qa:ui": "jest"
+    "qa:ui": "jest",
+    "version:bump": "node scripts/bump-version.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",

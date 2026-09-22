@@ -65,7 +65,7 @@ export function buildDemoData(todayKey: string): AppData {
     sessions[date] = { label: plan.label, exercises };
   }
 
-  return { version: 1, unit: 'kg', activeExerciseId: null, customExercises: [], sessions, routines: [], goals: {}, prefs: DEFAULT_PREFS };
+  return { version: 1, unit: 'kg', activeExerciseId: null, customExercises: [], sessions, routines: [], goals: {}, prefs: DEFAULT_PREFS, customDayLabels: [], hiddenDayLabels: [], exerciseModes: {} };
 }
 
 /**

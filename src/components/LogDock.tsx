@@ -1,13 +1,17 @@
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { formatDuration } from '../lib/duration';
 import { haptic } from '../lib/haptics';
 import { resolveSet } from '../lib/progress';
 import { fmtWeight, fromDisplay, roundDisplay, toDisplay } from '../lib/units';
 import { colors } from '../theme';
-import type { Ghost, SetRow, Unit } from '../types';
+import type { Ghost, SetMode, SetRow, Unit } from '../types';
 import { MinusIcon, PlusIcon } from './Icons';
 import { Num, PillButton, RoundButton } from './ui';
+
+/** One tap of the duration stepper. */
+const DURATION_STEP_SECONDS = 5;
 
 interface LogDockProps {
   activeRow: SetRow | undefined;
@@ -16,6 +20,7 @@ interface LogDockProps {
   unit: Unit;
   /** size of one weight +/- tap, in the display unit */
   step: number;
+  mode: SetMode;
   onChange: (rowId: string, field: 'weight' | 'reps', value: number | null) => void;
   onLog: (rowId: string, weight: number, reps: number) => void;
   onAdd: () => void;
@@ -43,7 +48,7 @@ function Stepper({ label, text, ghosted, onMinus, onPlus }: { label: string; tex
 }
 
 /** Thumb-zone dock: ± steppers for the active set, and the one big "Log set" button. */
-export function LogDock({ activeRow, activeIndex, ghost, unit, step, onChange, onLog, onAdd, compact = false }: LogDockProps) {
+export function LogDock({ activeRow, activeIndex, ghost, unit, step, mode, onChange, onLog, onAdd, compact = false }: LogDockProps) {
   const insets = useSafeAreaInsets();
   const resolved = activeRow && ghost ? resolveSet(activeRow, ghost) : null;
 
@@ -63,7 +68,8 @@ export function LogDock({ activeRow, activeIndex, ghost, unit, step, onChange, o
   const stepReps = (dir: 1 | -1) => {
     if (!activeRow) return;
     haptic.tap();
-    const next = Math.max(0, (reps ?? 0) + dir);
+    const by = mode === 'time' ? DURATION_STEP_SECONDS : 1;
+    const next = Math.max(0, (reps ?? 0) + dir * by);
     onChange(activeRow.id, 'reps', next === 0 ? null : next);
     if (activeRow.weight == null && ghost?.weight != null) onChange(activeRow.id, 'weight', ghost.weight);
   };
@@ -83,8 +89,8 @@ export function LogDock({ activeRow, activeIndex, ghost, unit, step, onChange, o
               onPlus={() => stepWeight(1)}
             />
             <Stepper
-              label="Reps"
-              text={reps == null ? '–' : String(reps)}
+              label={mode === 'time' ? 'Time' : 'Reps'}
+              text={reps == null ? '–' : mode === 'time' ? formatDuration(reps) : String(reps)}
               ghosted={activeRow.reps == null}
               onMinus={() => stepReps(-1)}
               onPlus={() => stepReps(1)}
@@ -94,7 +100,7 @@ export function LogDock({ activeRow, activeIndex, ghost, unit, step, onChange, o
             <PillButton
               variant="primary"
               label={`Log set ${activeIndex + 1}`}
-              detail={resolved ? `${fmtWeight(resolved.weight, unit)} ${unit} × ${resolved.reps}` : undefined}
+              detail={resolved ? (mode === 'time' ? formatDuration(resolved.reps) : `${fmtWeight(resolved.weight, unit)} ${unit} × ${resolved.reps}`) : undefined}
               disabled={!resolved}
               onPress={() => resolved && activeRow && onLog(activeRow.id, resolved.weight, resolved.reps)}
             />

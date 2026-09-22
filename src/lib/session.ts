@@ -1,5 +1,6 @@
-import type { SetPerf, SetRow, Session, Unit } from '../types';
-import { isLogged } from './progress';
+import type { SetMode, SetPerf, SetRow, Session, Unit } from '../types';
+import { formatDuration } from './duration';
+import { isLogged, isTimeSet, setKg } from './progress';
 import { fmtWeight } from './units';
 
 /** A finished set as shown on an exercise card, with the number it has in the entry table. */
@@ -14,19 +15,26 @@ export interface LoggedExercise {
   sets: LoggedSet[];
   /** completed working sets (warm-ups excluded) */
   workingSets: number;
-  /** kg lifted in working sets */
+  /** kg lifted in working sets. Always 0 for a time-based exercise — see `tutSeconds`. */
   volume: number;
+  /** How the day's sets of this exercise were logged. From the first completed set; 'reps' when there are none yet. */
+  mode: SetMode;
+  /** Seconds under tension across working time-based sets. 0 for a rep-based exercise. */
+  tutSeconds: number;
 }
 
 export interface DaySummary {
   exercises: number;
   sets: number;
-  /** kg */
+  /** kg. Time-based sets never contribute, the same way warm-ups don't. */
   volume: number;
 }
 
-/** kg lifted in the working sets of one exercise. Warm-ups never count. */
-export const exerciseVolume = (rows: SetRow[]) => rows.reduce((sum, r) => (isLogged(r) ? sum + r.weight * r.reps : sum), 0);
+/** kg lifted in the working sets of one exercise. Warm-ups, and every time-based set, never count. */
+export const exerciseVolume = (rows: SetRow[]) => rows.reduce((sum, r) => (isLogged(r) ? sum + setKg(r) : sum), 0);
+
+/** Seconds under tension across the working time-based sets of one exercise. */
+export const exerciseTut = (rows: SetRow[]) => rows.reduce((sum, r) => (isLogged(r) && isTimeSet(r) ? sum + r.reps! : sum), 0);
 
 /**
  * The exercises that have at least one completed set on a day, in the order you first logged them.
@@ -46,6 +54,8 @@ export function loggedExercises(session: Session | undefined): LoggedExercise[] 
       sets,
       workingSets: sets.filter((s) => !s.row.warmup).length,
       volume: exerciseVolume(rows),
+      mode: sets[0].row.mode ?? 'reps',
+      tutSeconds: exerciseTut(rows),
       firstAt: Math.min(...sets.map((s) => s.row.at ?? Infinity)),
       order,
     });
@@ -65,9 +75,15 @@ export function summarizeDay(session: Session | undefined): DaySummary {
   };
 }
 
-/** "60 × 8 · 60 × 8 · 60 × 7 · +2 more" (weights in `unit`). */
-export function formatSets(sets: SetPerf[], unit: Unit, max = 3): string {
-  const shown = sets.slice(0, max).map((s) => `${fmtWeight(s.weight, unit)} × ${s.reps}`);
+/**
+ * "60 × 8 · 60 × 8 · 60 × 7 · +2 more" for rep-based sets (weights in `unit`).
+ * For time-based sets: "0:45 · 0:45 · +1 more", with the weight folded in only when it's non-zero
+ * ("5 kg for 0:45"), since most holds are pure bodyweight and repeating "0 kg" on every set is noise.
+ */
+export function formatSets(sets: SetPerf[], unit: Unit, mode: SetMode = 'reps', max = 3): string {
+  const one = (s: SetPerf) =>
+    mode === 'time' ? (s.weight > 0 ? `${fmtWeight(s.weight, unit)} ${unit} for ${formatDuration(s.reps)}` : formatDuration(s.reps)) : `${fmtWeight(s.weight, unit)} × ${s.reps}`;
+  const shown = sets.slice(0, max).map(one);
   const rest = sets.length - shown.length;
   return rest > 0 ? `${shown.join(' · ')} · +${rest} more` : shown.join(' · ');
 }

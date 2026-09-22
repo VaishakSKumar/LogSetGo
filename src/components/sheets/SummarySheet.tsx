@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 
 import { shortDate } from '../../lib/dates';
+import { formatDuration } from '../../lib/duration';
 import { haptic } from '../../lib/haptics';
 import { routineFromSession, routineIdFor } from '../../lib/routines';
 import { workoutSummary } from '../../lib/stats';
@@ -78,24 +79,32 @@ export function SummarySheet({ visible, onClose }: { visible: boolean; onClose: 
             ) : null}
 
             <View className="mt-4">
-              {summary.exercises.map((e, i) => (
-                <View key={e.exerciseId} className="min-h-[56px] flex-row items-center py-2" style={i ? { borderTopWidth: 1, borderTopColor: colors.line } : undefined}>
-                  <View className="flex-1 pr-3">
-                    <Text className="text-body text-label" numberOfLines={1}>
-                      {byId.get(e.exerciseId)?.name ?? e.exerciseId}
-                    </Text>
-                    <Caption>
-                      {e.sets} set{e.sets > 1 ? 's' : ''} · {fmtVolume(e.volume, unit)} {unit}
-                    </Caption>
+              {summary.exercises.map((e, i) => {
+                const isTime = e.mode === 'time';
+                return (
+                  <View key={e.exerciseId} className="min-h-[56px] flex-row items-center py-2" style={i ? { borderTopWidth: 1, borderTopColor: colors.line } : undefined}>
+                    <View className="flex-1 pr-3">
+                      <Text className="text-body text-label" numberOfLines={1}>
+                        {byId.get(e.exerciseId)?.name ?? e.exerciseId}
+                      </Text>
+                      <Caption>
+                        {e.sets} set{e.sets > 1 ? 's' : ''}
+                        {isTime ? '' : ` · ${fmtVolume(e.volume, unit)} ${unit}`}
+                      </Caption>
+                    </View>
+                    <View className="items-end">
+                      <Num size="text-h2">{isTime ? formatDuration(e.top.reps) : `${fmtWeight(e.top.weight, unit)} × ${e.top.reps}`}</Num>
+                      {e.pr ? (
+                        <Text className="text-caption font-semibold" style={{ color: colors.accent }}>
+                          PR
+                        </Text>
+                      ) : (
+                        <Caption>{isTime ? 'longest hold' : 'top set'}</Caption>
+                      )}
+                    </View>
                   </View>
-                  <View className="items-end">
-                    <Num size="text-h2">
-                      {fmtWeight(e.top.weight, unit)} × {e.top.reps}
-                    </Num>
-                    {e.pr ? <Text className="text-caption font-semibold" style={{ color: colors.accent }}>PR</Text> : <Caption>top set</Caption>}
-                  </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
 
             <View className="mt-4 rounded-2xl bg-fill/40 p-3">

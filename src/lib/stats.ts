@@ -1,6 +1,6 @@
-import type { Exercise, Goal, HistoryEntry, MuscleGroup, SetPerf, Session } from '../types';
+import type { Exercise, Goal, HistoryEntry, MuscleGroup, SetMode, SetPerf, Session } from '../types';
 import { addDays, daysBetween, weekStartKey } from './dates';
-import { e1rm, isLogged, topSet, weekTotals, type WeekTotals } from './progress';
+import { e1rm, isLogged, setKg, topSet, weekTotals, type WeekTotals } from './progress';
 
 type Sessions = Record<string, Session>;
 
@@ -96,9 +96,12 @@ export function muscleSplit(sessions: Sessions, byId: Map<string, Exercise>, tod
 export interface SummaryExercise {
   exerciseId: string;
   sets: number;
+  /** kg. Always 0 for a time-based exercise. */
   volume: number;
+  /** The heaviest (rep-based) or longest (time-based) set of the day. */
   top: SetPerf;
   pr: boolean;
+  mode: SetMode;
 }
 
 export interface WorkoutSummary {
@@ -115,7 +118,7 @@ export interface WorkoutSummary {
 }
 
 const volumeOfSession = (s: Session) =>
-  Object.values(s.exercises).reduce((sum, rows) => sum + rows.filter(isLogged).reduce((v, r) => v + r.weight * r.reps, 0), 0);
+  Object.values(s.exercises).reduce((sum, rows) => sum + rows.filter(isLogged).reduce((v, r) => v + setKg(r), 0), 0);
 
 export function workoutSummary(sessions: Sessions, date: string): WorkoutSummary | null {
   const s = sessions[date];
@@ -126,13 +129,16 @@ export function workoutSummary(sessions: Sessions, date: string): WorkoutSummary
     const logged = rows.filter(isLogged);
     if (!logged.length) continue;
     for (const r of logged) if (r.at) times.push(r.at);
+    // "Top" set: heaviest for a rep-based exercise, longest hold for a time-based one — both are
+    // "biggest weight, then biggest second number", so the same comparison works for either.
     const top = logged.reduce((a, b) => (b.weight > a.weight || (b.weight === a.weight && b.reps > a.reps) ? b : a));
     exercises.push({
       exerciseId,
       sets: logged.length,
-      volume: logged.reduce((v, r) => v + r.weight * r.reps, 0),
+      volume: logged.reduce((v, r) => v + setKg(r), 0),
       top: { weight: top.weight, reps: top.reps },
       pr: logged.some((r) => r.pr),
+      mode: logged[0].mode ?? 'reps',
     });
   }
   if (!exercises.length) return null;

@@ -13,7 +13,7 @@ import { colors, motion } from '../theme';
 import type { Exercise, MuscleGroup } from '../types';
 import { CloseIcon, PlusIcon, SearchIcon } from './Icons';
 
-const GROUPS: MuscleGroup[] = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Other'];
+const GROUPS: MuscleGroup[] = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Cardio', 'Other'];
 
 const INPUT_FONT = { fontSize: 17, letterSpacing: -0.2, fontWeight: '400' } as const;
 

@@ -61,6 +61,19 @@ npm run qa:gate      # type-check, logic tests, UI tests, iOS + Android + web bu
 npm run icons
 ```
 
+### Version number (the one shown in phone Settings / About)
+
+`app.json`'s `expo.version` (kept in sync with `package.json`'s `version`) is a plain string — nothing bumps it automatically, which is why it can sit at the same number release after release if nobody touches it. Before building a release, bump it:
+
+```bash
+npm run version:bump          # 1.0.1 -> 1.0.2 -> … -> 1.0.9, then rolls to 1.1.0
+npm run version:bump -- --minor   # force the next-minor rollover early
+npm run version:bump -- --major   # 1.4.7 -> 2.0.0
+npm run version:bump -- --dry-run # preview without writing
+```
+
+This is separate from the Android `versionCode` / iOS build number, which `eas.json`'s `"autoIncrement": true` (on the `production` build profile) already bumps automatically on every build — that number is internal and isn't what shows in the app's About section.
+
 ---
 
 ## Part 2: Give it to your friends

@@ -4,13 +4,15 @@ import { PillButton } from './ui';
 import { COL, SetRowItem } from './SetRow';
 import { PlusIcon } from './Icons';
 import { colors } from '../theme';
-import type { Ghost, SetPerf, SetRow, Unit } from '../types';
+import type { Ghost, SetMode, SetPerf, SetRow, Unit } from '../types';
 
 interface SetTableProps {
   rows: SetRow[];
   ghosts: Ghost[];
   prevSets: SetPerf[] | undefined;
   unit: Unit;
+  /** Which column the second field is: Reps or Time. New rows are created in this mode. */
+  mode: SetMode;
   activeRowId: string | undefined;
   onChange: (rowId: string, field: 'weight' | 'reps', value: number | null) => void;
   onLog: (rowId: string, weight: number, reps: number) => void;
@@ -23,8 +25,8 @@ const Head = ({ children, className = '' }: { children: string; className?: stri
   <Text className={`text-caption uppercase tracking-wider text-muted/60 ${className}`}>{children}</Text>
 );
 
-/** Active-set card: SET | PREVIOUS | WEIGHT | REPS | ✓ */
-export function SetTable({ rows, ghosts, prevSets, unit, activeRowId, onChange, onLog, onAdd, onRemove, onDetails }: SetTableProps) {
+/** Active-set card: SET | PREVIOUS | WEIGHT | REPS-or-TIME | ✓ */
+export function SetTable({ rows, ghosts, prevSets, unit, mode, activeRowId, onChange, onLog, onAdd, onRemove, onDetails }: SetTableProps) {
   const canRemove = rows.length > 1 && !rows[rows.length - 1].done;
 
   return (
@@ -33,7 +35,7 @@ export function SetTable({ rows, ghosts, prevSets, unit, activeRowId, onChange, 
         <Head className={COL.set}>Set</Head>
         <Head className={COL.previous}>Previous</Head>
         <Head className="flex-1 pr-2 text-right">{unit}</Head>
-        <Head className={`${COL.reps} ml-2 pr-2 text-right`}>Reps</Head>
+        <Head className={`${COL.reps} ml-2 pr-2 text-right`}>{mode === 'time' ? 'Time' : 'Reps'}</Head>
         <View className={COL.check} />
       </View>
 
