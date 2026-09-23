@@ -18,6 +18,8 @@ interface Props {
   previous: string | null;
   onMenu: () => void;
   onDelete: () => void;
+  /** A past day's activity log: no ••• menu and no swipe-to-delete, just what was logged. */
+  readOnly?: boolean;
 }
 
 const Head = ({ children, className = '' }: { children: string; className?: string }) => (
@@ -26,40 +28,36 @@ const Head = ({ children, className = '' }: { children: string; className?: stri
 
 const rounded = { fontFamily: roundedFont } as const;
 
-/** One logged exercise: name, muscle badge, the completed sets, and a swipe-to-delete / ••• menu. */
-export function ExerciseLogCard({ entry, exercise, unit, previous, onMenu, onDelete }: Props) {
-  return (
-    <Animated.View
-      entering={FadeIn.duration(motion.duration)}
-      exiting={SlideOutLeft.duration(200)}
-      layout={LinearTransition.duration(motion.duration)}
-    >
-      <SwipeToDelete onDelete={onDelete} label={exercise.name}>
-        <View className="border p-4" style={{ backgroundColor: colors.surface, borderColor: colors.line, borderRadius: 24 }}>
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 flex-row items-center gap-2 pr-2">
-              <Text className="shrink text-h2 text-label" numberOfLines={1}>
-                {exercise.name}
-              </Text>
-              <View className="rounded-full bg-fill px-2 py-0.5">
-                <Text className="text-[10px] font-bold uppercase tracking-wider text-muted">{exercise.group}</Text>
-              </View>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`More options for ${exercise.name}`}
-              hitSlop={8}
-              onPress={() => {
-                haptic.tap();
-                onMenu();
-              }}
-              className="h-11 w-11 items-center justify-center rounded-full active:bg-fill"
-            >
-              <Text className="text-h2 text-muted" style={{ letterSpacing: 1 }}>
-                •••
-              </Text>
-            </Pressable>
+/** One logged exercise: name, muscle badge, the completed sets, and (unless read-only) a swipe-to-delete / ••• menu. */
+export function ExerciseLogCard({ entry, exercise, unit, previous, onMenu, onDelete, readOnly }: Props) {
+  const card = (
+    <View className="border p-4" style={{ backgroundColor: colors.surface, borderColor: colors.line, borderRadius: 24 }}>
+      <View className="flex-row items-center justify-between">
+        <View className="flex-1 flex-row items-center gap-2 pr-2">
+          <Text className="shrink text-h2 text-label" numberOfLines={1}>
+            {exercise.name}
+          </Text>
+          <View className="rounded-full bg-fill px-2 py-0.5">
+            <Text className="text-[10px] font-bold uppercase tracking-wider text-muted">{exercise.group}</Text>
           </View>
+        </View>
+        {readOnly ? null : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`More options for ${exercise.name}`}
+            hitSlop={8}
+            onPress={() => {
+              haptic.tap();
+              onMenu();
+            }}
+            className="h-11 w-11 items-center justify-center rounded-full active:bg-fill"
+          >
+            <Text className="text-h2 text-muted" style={{ letterSpacing: 1 }}>
+              •••
+            </Text>
+          </Pressable>
+        )}
+      </View>
 
           {previous ? (
             <Text className="mt-0.5 text-meta text-muted" numberOfLines={1}>
@@ -102,19 +100,31 @@ export function ExerciseLogCard({ entry, exercise, unit, previous, onMenu, onDel
             );
           })}
 
-          {entry.mode === 'time' ? (
-            <Text className="mt-2 text-meta text-muted" accessibilityLabel={`Time under tension ${formatDuration(entry.tutSeconds)}`}>
-              Time under tension {formatDuration(entry.tutSeconds)}
-              {entry.workingSets !== entry.sets.length ? ' · warm-ups not counted' : ''}
-            </Text>
-          ) : (
-            <Text className="mt-2 text-meta text-muted" accessibilityLabel={`Volume ${fmtVolume(entry.volume, unit)} ${unit}`}>
-              Volume {fmtVolume(entry.volume, unit)} {unit}
-              {entry.workingSets !== entry.sets.length ? ' · warm-ups not counted' : ''}
-            </Text>
-          )}
-        </View>
-      </SwipeToDelete>
+      {entry.mode === 'time' ? (
+        <Text className="mt-2 text-meta text-muted" accessibilityLabel={`Time under tension ${formatDuration(entry.tutSeconds)}`}>
+          Time under tension {formatDuration(entry.tutSeconds)}
+          {entry.workingSets !== entry.sets.length ? ' · warm-ups not counted' : ''}
+        </Text>
+      ) : (
+        <Text className="mt-2 text-meta text-muted" accessibilityLabel={`Volume ${fmtVolume(entry.volume, unit)} ${unit}`}>
+          Volume {fmtVolume(entry.volume, unit)} {unit}
+          {entry.workingSets !== entry.sets.length ? ' · warm-ups not counted' : ''}
+        </Text>
+      )}
+    </View>
+  );
+
+  return (
+    <Animated.View
+      entering={FadeIn.duration(motion.duration)}
+      exiting={SlideOutLeft.duration(200)}
+      layout={LinearTransition.duration(motion.duration)}
+    >
+      {readOnly ? card : (
+        <SwipeToDelete onDelete={onDelete} label={exercise.name}>
+          {card}
+        </SwipeToDelete>
+      )}
     </Animated.View>
   );
 }

@@ -65,6 +65,14 @@ Every exercise logs as **Reps** (Set · Weight · Reps) or **Time** (Set · Weig
 - **Weighted holds** (a weighted plank, a loaded carry) keep the weight column; it defaults to 0 kg (bodyweight) rather than blank, so a plain hold needs only a duration.
 - **What changes with Time mode:** the exercise's card and the recorder's live readout swap "Volume" for **Time under tension** (the sum of your working sets' durations); a "PR" means the longest hold, not the heaviest weight. What doesn't change: the weekly volume chart, muscle balance, strength trend, personal records and weight goals are all rep-based only — a time-based exercise sits outside them, the same way warm-ups sit outside volume and PRs. Its own Progress panel instead shows your best and most recent hold and a small trend of past sessions; there's no goal card, since a kg target doesn't apply.
 
+### Chronological navigation
+‹ and › sit right next to the date, so you can step through days one at a time, from anywhere — not just via the calendar. Gym Progress always reflects whichever date you land on:
+- **Today** is fully interactive: log sets, add exercises, delete, rename — unchanged.
+- **A past date** is read-only: it plays back exactly what you logged (sets, duration, volume) with no `+ Add exercise`, no `•••` menu and no swipe-to-delete — a pure activity log. A day you never logged anything on shows "Nothing was logged on this day."
+- **A future date** shows "No workout logged for this date yet." — nothing can be logged ahead of time.
+
+Logging today still needs today marked Present, same as before; browsing any other date never does — it's just history or an empty preview, not a place to add data.
+
 ### Custom workout day names
 A small green **+** sits beside the workout-day name (tap the day label itself, or the streak dots row, to see it). Tap it to name today's session:
 - **New workout day sheet:** a field (auto-focused, with a **✕** clear button) and preset chips (Push, Pull, Legs, Upper, Lower, Full Body, Cardio) — tap one to start from it, then keep typing to make it yours. **Save & Apply** creates the name, saves it for every future day, and switches today to it in one step, with a light haptic. **Cancel** discards it.
@@ -168,9 +176,9 @@ src/lib/routines.ts         plan builder + routine helpers (tested)
 src/lib/stats.ts            volume, records, muscle split, summary, goals (tested)
 src/lib/calc.ts             1RM, plates, warm-ups (tested)
 src/lib/session.ts          day feed, summary, "last time" text (tested)
+src/lib/duration.ts         seconds ⇄ "MM:SS" formatting and parsing (tested)
 src/lib/daylabels.ts        custom workout-day names: normalize, add, remove (tested)
 src/components/sheets/AddDayNameSheet.tsx   "New workout day" sheet
-src/lib/duration.ts         seconds ⇄ "MM:SS" formatting and parsing (tested)
 src/components/session/ModeToggle.tsx       Reps / Time segmented control
 src/components/session/     BottomDrawer, WorkoutRecorderSheet, SummaryCard, ExerciseLogCard, SwipeToDelete, AddExerciseButton, ExerciseMenuSheet, AnimatedNumber
 src/lib/notify.ts, files.ts, diagnostics.ts   native-facing helpers (safe no-ops on web)

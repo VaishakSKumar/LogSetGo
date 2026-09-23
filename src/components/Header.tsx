@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { WEEKDAY_LETTERS, headerDate, shortDate, weekStartKey, weekdayIndex } from '../lib/dates';
+import { addDays, WEEKDAY_LETTERS, headerDate, shortDate, weekStartKey, weekdayIndex } from '../lib/dates';
 import { visibleDefaultDayLabels } from '../lib/daylabels';
 import { WEEKLY_GOAL, streakWeeks, trainedDays } from '../lib/progress';
 import { haptic } from '../lib/haptics';
 import { useGym } from '../store/gym';
 import { colors } from '../theme';
 import type { Unit } from '../types';
-import { ChevronDownIcon, PlusIcon, TrashIcon } from './Icons';
+import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon } from './Icons';
 import { AddDayNameSheet } from './sheets/AddDayNameSheet';
 import { Sheet } from './Sheet';
 
@@ -107,7 +107,7 @@ function DayChip({
   );
 }
 
-/** Compact date · workout-day label · weekly streak. Tap the label to change day or units, "+" to name a new one. */
+/** Compact date · workout-day label · weekly streak, with ‹ › arrows to step through days. Tap the label to change day or units, "+" to name a new one. */
 export function Header() {
   const { today, realToday, label, data, actions } = useGym();
   const [sheet, setSheet] = useState(false);
@@ -122,6 +122,11 @@ export function Header() {
   const closeSheet = () => {
     setSheet(false);
     setArmed(null);
+  };
+
+  const step = (n: number) => {
+    haptic.tap();
+    actions.setWorkDate(addDays(today, n));
   };
 
   return (
@@ -141,37 +146,57 @@ export function Header() {
         </Pressable>
       ) : null}
     <View className="flex-row items-end justify-between">
-      <View className="flex-1 pr-3">
-        <Text className="text-caption uppercase tracking-wider text-muted/60">{headerDate(today)}</Text>
-        <View className="flex-row items-center gap-1">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Workout day ${label}. Tap to change.`}
-            onPress={() => {
-              haptic.tap();
-              setSheet(true);
-            }}
-            className="flex-row items-center gap-2 py-1 active:opacity-70"
-          >
-            <Text className="text-dayname text-label" numberOfLines={1}>
-              {label}
-            </Text>
-            <ChevronDownIcon />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="New workout day name"
-            hitSlop={8}
-            onPress={() => {
-              haptic.tap();
-              setAddOpen(true);
-            }}
-            className="h-8 w-8 items-center justify-center rounded-full active:opacity-70"
-            style={{ backgroundColor: colors.fill }}
-          >
-            <PlusIcon size={15} color={colors.accent} stroke={2.6} />
-          </Pressable>
+      <View className="flex-1 flex-row items-center gap-1 pr-3">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Previous day"
+          hitSlop={8}
+          onPress={() => step(-1)}
+          className="h-8 w-8 items-center justify-center rounded-full active:opacity-60"
+        >
+          <ChevronLeftIcon size={16} />
+        </Pressable>
+        <View className="flex-1" style={{ minWidth: 0 }}>
+          <Text className="text-caption uppercase tracking-wider text-muted/60">{headerDate(today)}</Text>
+          <View className="flex-row items-center gap-1">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Workout day ${label}. Tap to change.`}
+              onPress={() => {
+                haptic.tap();
+                setSheet(true);
+              }}
+              className="shrink flex-row items-center gap-2 py-1 active:opacity-70"
+            >
+              <Text className="text-dayname text-label" numberOfLines={1}>
+                {label}
+              </Text>
+              <ChevronDownIcon />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="New workout day name"
+              hitSlop={8}
+              onPress={() => {
+                haptic.tap();
+                setAddOpen(true);
+              }}
+              className="h-8 w-8 items-center justify-center rounded-full active:opacity-70"
+              style={{ backgroundColor: colors.fill }}
+            >
+              <PlusIcon size={15} color={colors.accent} stroke={2.6} />
+            </Pressable>
+          </View>
         </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Next day"
+          hitSlop={8}
+          onPress={() => step(1)}
+          className="h-8 w-8 items-center justify-center rounded-full active:opacity-60"
+        >
+          <ChevronRightIcon size={16} />
+        </Pressable>
       </View>
 
       <View className="items-end pb-1.5">

@@ -100,6 +100,8 @@ describe('Gym Progress states', () => {
   });
 
   it('deleting asks first, then removes the exercise and takes its volume off the total', async () => {
+    // Two full log-and-drawer-close cycles plus a confirmation sheet: the slowest test here,
+    // and right at Jest's 5s default under load — give it real headroom instead of flaking.
     await renderWithApp(<WithBench />);
     await screen.findAllByLabelText('Log set 1');
     await logSetOfFifty();
@@ -129,7 +131,7 @@ describe('Gym Progress states', () => {
     expect(Haptics.impactAsync).toHaveBeenCalledWith('medium');
     expect(screen.queryByLabelText('More options for Barbell Bench Press')).toBeNull();
     expect(screen.getByLabelText('More options for Barbell Row')).toBeTruthy();
-  });
+  }, 15000);
 
   it('the swipe-revealed Delete goes through the same confirmation and can be cancelled', async () => {
     await renderWithApp(<WithBench />);

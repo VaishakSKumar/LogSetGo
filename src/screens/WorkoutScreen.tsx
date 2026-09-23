@@ -39,13 +39,15 @@ interface MenuState {
 }
 
 /**
- * Gym Progress, in three states:
- *  A. Nothing logged yet: a search bar is the whole screen. Picking an exercise opens the recorder.
- *  B. Something logged: today's summary, a feed of exercise cards, and a "+" to add another.
- *  C. The recorder: a 90% bottom drawer (search, last time, set rows, Add set, Done) opened by "+" or by picking an exercise.
+ * Gym Progress strictly reflects whichever date is selected — the real today, or wherever the
+ * calendar or the header's day arrows point — in one of three modes:
+ *  · Today: fully interactive. Nothing logged yet shows a search hero; something logged shows the
+ *    summary, feed and a "+" to add another; either opens the recorder drawer to log sets.
+ *  · A past date: read-only. The feed (if any) is a plain activity log — no "+", no ••• menu, no
+ *    swipe-to-delete, and picking an exercise or starting a routine can't open the recorder.
+ *  · A future date: an empty-state placeholder. Nothing can be logged yet.
  * Sets are saved the moment they're checked, so the summary and feed behind the drawer update live;
  * Done validates, closes the drawer and brings you back to the top of the screen.
- * Logs against `today` from the store: the real today, or whichever date the calendar routed here.
  */
 export function WorkoutScreen() {
   const { active, rows, history, durationHistory, data, today, realToday, byId, selectionCount, actions } = useGym();
@@ -63,6 +65,10 @@ export function WorkoutScreen() {
 
   const unit = data.unit;
   const step = unit === 'kg' ? data.prefs.stepKg : data.prefs.stepLb;
+
+  /** Only today can be logged. Every other date — past or future — is a view, never an edit. */
+  const canWrite = today === realToday;
+  const isFuture = today > realToday;
 
   const session = data.sessions[today];
   const logged = useMemo(() => loggedExercises(session), [session]);
@@ -86,12 +92,14 @@ export function WorkoutScreen() {
     return prev ? `Last time · ${relativeDay(prev.date, today)} · ${formatSets(prev.sets, unit, m)}` : null;
   };
 
-  // Picking an exercise (search, chip, card menu) or starting a routine opens the recorder. If another
+  // Picking an exercise (search, chip, card menu) or starting a routine opens the recorder — but
+  // only on today: a past or future date is a view, so there is nothing for it to open. If another
   // modal has only just closed it may still be sliding away, and stacking two modals misbehaves on iOS.
   const seenSelection = useRef(selectionCount);
   useEffect(() => {
     if (selectionCount === seenSelection.current) return;
     seenSelection.current = selectionCount;
+    if (!canWrite) return;
     const wait = Math.max(0, MODAL_SETTLE_MS - (Date.now() - modalClosedAt.current));
     if (!wait) {
       setDrawerOpen(true);
@@ -99,7 +107,7 @@ export function WorkoutScreen() {
     }
     const t = setTimeout(() => setDrawerOpen(true), wait);
     return () => clearTimeout(t);
-  }, [selectionCount]);
+  }, [selectionCount, canWrite]);
 
   // Each date starts from its own state.
   useEffect(() => {
@@ -123,6 +131,7 @@ export function WorkoutScreen() {
   }, [closeDrawer]);
 
   const openDrawerForNew = () => {
+    if (!canWrite) return;
     haptic.tap();
     actions.deselectExercise(); // "+" is for a new exercise, not the one you just finished
     setDrawerOpen(true);
@@ -133,7 +142,7 @@ export function WorkoutScreen() {
     setSheet(null);
   };
 
-  /** Every checkmark goes through here. Logging a set today starts the rest timer; back-filling a past day doesn't. */
+  /** Every checkmark goes through here. Logging a set today starts the rest timer. */
   const logSet = useCallback(
     (rowId: string, weight: number, reps: number) => {
       const wasDone = rows.find((r) => r.id === rowId)?.done ?? false;
@@ -143,7 +152,7 @@ export function WorkoutScreen() {
     [rows, actions, settings.autoStart, settings.defaultSeconds, controls, today, realToday],
   );
 
-  /* ── the ••• menu and every delete ── */
+  /* ── the ••• menu and every delete (today only) ── */
   const openMenu = (entry: LoggedExercise, stepName: MenuStep) =>
     setMenu({ id: entry.id, step: stepName, visible: true, name: byId.get(entry.id)?.name ?? entry.id, entry });
   const closeMenu = () => {
@@ -165,6 +174,8 @@ export function WorkoutScreen() {
   // While the drawer is open it shows the countdown itself; behind it the page has no need to.
   const showBanner = timer.status !== 'idle' && !drawerOpen;
 
+  const emptyMessage = isFuture ? 'No workout logged for this date yet.' : canWrite ? 'No exercises logged for today. Start by typing an exercise above.' : 'Nothing was logged on this day.';
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-base">
       <ScrollView
@@ -176,15 +187,15 @@ export function WorkoutScreen() {
       >
         <Header />
 
-        {/* State A: the search bar is the hero. */}
-        {!hasLogged ? (
+        {/* Today, nothing logged: the search bar is the hero. */}
+        {!hasLogged && canWrite ? (
           <View className="gap-3 pt-2">
             <Text className="text-center text-h1 text-label">What are you training?</Text>
             <ExerciseSearch hero open={heroSearchOpen} onOpenChange={setHeroSearchOpen} showSelected={false} />
           </View>
         ) : null}
 
-        {/* State B: summary, feed, and the + button. */}
+        {/* Something logged (today, or a past day's log): summary, feed, and — only today — the + button. */}
         {hasLogged && !heroSearchOpen ? <SummaryCard summary={summary} unit={unit} /> : null}
 
         {hasLogged ? (
@@ -199,6 +210,7 @@ export function WorkoutScreen() {
                   exercise={ex ?? { name: entry.id, group: 'Other' }}
                   unit={unit}
                   previous={lastTimeFor(entry.id)}
+                  readOnly={!canWrite}
                   onMenu={() => openMenu(entry, 'menu')}
                   onDelete={() => openMenu(entry, 'confirm')}
                 />
@@ -207,15 +219,15 @@ export function WorkoutScreen() {
           </View>
         ) : null}
 
-        {hasLogged ? <AddExerciseButton open={drawerOpen} onPress={openDrawerForNew} /> : null}
+        {hasLogged && canWrite ? <AddExerciseButton open={drawerOpen} onPress={openDrawerForNew} /> : null}
 
         {!hasLogged && !heroSearchOpen ? (
           <View
             className="items-center rounded-3xl border px-6 py-8"
             style={{ backgroundColor: colors.glass, borderColor: colors.glassBorder }}
-            accessibilityLabel="No exercises logged for today"
+            accessibilityLabel={canWrite ? 'No exercises logged for today' : isFuture ? 'No workout logged for this date yet' : 'Nothing was logged on this day'}
           >
-            <Text className="text-center text-body text-muted">No exercises logged for today. Start by typing an exercise above.</Text>
+            <Text className="text-center text-body text-muted">{emptyMessage}</Text>
           </View>
         ) : null}
 
