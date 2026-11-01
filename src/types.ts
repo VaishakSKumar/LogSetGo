@@ -5,6 +5,11 @@ export type Split = 'push' | 'pull' | 'legs' | 'other';
 /** 'time' means the set's second number is a duration in seconds, not a rep count. */
 export type SetMode = 'reps' | 'time';
 
+export type Equipment = 'Barbell' | 'Dumbbell' | 'Machine' | 'Cable' | 'Bodyweight' | 'Cardio';
+
+/** The kg box for an exercise: normal, optional extra weight, or not shown at all. */
+export type LoadKind = 'kg' | 'extra' | 'none';
+
 export interface Exercise {
   id: string;
   name: string;
@@ -14,10 +19,29 @@ export interface Exercise {
   custom?: boolean;
   /** The mode a freshly picked instance of this exercise starts in, before any personal override. */
   defaultMode?: SetMode;
+  equipment?: Equipment;
+  /** Bodyweight or cardio: done with no added kg. */
+  noWeight?: boolean;
+  /** A bundled form-guide image or clip (a `require()` result). */
+  localMedia?: number;
+  /** A form video, used when there is no bundled media. */
+  youtubeUrl?: string;
+  /** Replaces the form cues worked out from the exercise's name and muscle group. */
+  cues?: string[];
+}
+
+/** One monthly progress photo, stored on the device under the date it was taken. */
+export interface MonthlyPhoto {
+  /** YYYY-MM-DD */
+  date: string;
+  uri: string;
+  mimeType: string;
+  /** bytes */
+  size: number;
 }
 
 /**
- * One row in the set table. Weight is always stored in kg.
+ * One row in the set table. Weight is always stored in kg; 0 means no added weight.
  * `reps` doubles as the duration in seconds when `mode` is `'time'` — one numeric field, formatted
  * and parsed differently at the edges, so every existing weight×reps calculation keeps working
  * unchanged and simply treats a time-based set's number as "0 reps of a rep exercise" (harmless,
@@ -87,6 +111,8 @@ export interface AppData {
   hiddenDayLabels: string[];
   /** Your Reps-vs-Time choice per exercise, remembered for next time. Unset exercises fall back to catalog smart-detection. */
   exerciseModes: Record<string, SetMode>;
+  /** YouTube links you pasted for form videos, by exercise id. */
+  exerciseVideos: Record<string, string>;
 }
 
 export interface SetPerf {

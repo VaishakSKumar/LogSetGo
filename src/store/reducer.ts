@@ -1,6 +1,6 @@
 import {
   bestDurationExcluding,
-  bestE1rmExcluding,
+  bestE1rmExcluding, bestRepsExcluding,
   buildHistory,
   defaultLabelFor,
   e1rm,
@@ -37,7 +37,8 @@ export type Action =
   | { type: 'deleteDayLabel'; label: string }
   | { type: 'hideDayLabel'; label: string }
   | { type: 'restoreDayLabels' }
-  | { type: 'setExerciseMode'; date: string; exerciseId: string; mode: SetMode };
+  | { type: 'setExerciseMode'; date: string; exerciseId: string; mode: SetMode }
+  | { type: 'setExerciseVideo'; exerciseId: string; url: string | null };
 
 export const initialData: AppData = EMPTY_APP_DATA;
 
@@ -69,6 +70,10 @@ function updateRows(state: AppData, date: string, fn: (rows: SetRow[]) => SetRow
 type ToggleAction = Extract<Action, { type: 'toggle' }>;
 
 const isNewE1rm = (state: AppData, exerciseId: string, a: ToggleAction) => {
+  if (a.weight === 0) {
+    const priorReps = bestRepsExcluding(state.sessions, exerciseId, a.rowId, a.date);
+    return priorReps !== null && a.reps > priorReps;
+  }
   const prior = bestE1rmExcluding(state.sessions, exerciseId, a.rowId, a.date);
   return prior !== null && e1rm(a.weight, a.reps) > prior + 1e-6;
 };
@@ -80,6 +85,11 @@ const isNewLongestHold = (state: AppData, exerciseId: string, a: ToggleAction) =
 
 export function reducer(state: AppData, action: Action): AppData {
   switch (action.type) {
+    case 'setExerciseVideo': {
+      const { [action.exerciseId]: _old, ...exerciseVideos } = state.exerciseVideos;
+      return { ...state, exerciseVideos: action.url ? { ...exerciseVideos, [action.exerciseId]: action.url } : exerciseVideos };
+    }
+
     case 'hydrate':
       return action.data;
 

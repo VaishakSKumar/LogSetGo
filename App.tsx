@@ -9,6 +9,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { PresenceGate } from './src/components/PresenceGate';
 import { RestBanner } from './src/components/RestBanner';
+import { MonthlyPhotoGate } from './src/components/session/MonthlyPhotoGate';
 import { canLog } from './src/lib/attendance';
 import { SettingsSheet } from './src/components/sheets/SettingsSheet';
 import { TopTabBar, type TabKey } from './src/components/TopTabBar';
@@ -102,7 +103,9 @@ function Root() {
         </Pane>
         <Pane active={tab === 'gym'} visited={visited.gym}>
           <PresenceGate onOpenAttendance={() => goTo('attendance')}>
-            <WorkoutScreen />
+            <MonthlyPhotoGate>
+              <WorkoutScreen />
+            </MonthlyPhotoGate>
           </PresenceGate>
         </Pane>
         <Pane active={tab === 'body'} visited={visited.body}>

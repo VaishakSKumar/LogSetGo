@@ -3,6 +3,8 @@ import { Pressable, Text, View } from 'react-native';
 
 import { formatDuration } from '../../lib/duration';
 import { haptic } from '../../lib/haptics';
+import { loadOf } from '../../lib/progress';
+import { exerciseReps } from '../../lib/session';
 import { fmtVolume, toDisplay } from '../../lib/units';
 import { useTimer } from '../../store/timer';
 import { colors } from '../../theme';
@@ -17,10 +19,13 @@ import { SetTable } from '../SetTable';
 import { TimerDashboard } from '../TimerDashboard';
 import { AnimatedNumber } from './AnimatedNumber';
 import { BottomDrawer } from './BottomDrawer';
+import { ExerciseMedia } from './ExerciseMedia';
 import { ModeToggle } from './ModeToggle';
+import { RestOverlay } from './RestOverlay';
 
 /** Live totals: they count up the instant a set is checked off (and back down if it's undone). */
-function VolumeReadout({ exerciseKg, tutSeconds, dayKg, unit, mode }: { exerciseKg: number; tutSeconds: number; dayKg: number; unit: Unit; mode: SetMode }) {
+function VolumeReadout({ exerciseKg, tutSeconds, reps, dayKg, unit, mode }: { exerciseKg: number; tutSeconds: number; reps: number; dayKg: number; unit: Unit; mode: SetMode }) {
+  const repsOnly = reps > 0 && exerciseKg === 0;
   const day = Math.round(toDisplay(dayKg, unit));
   return (
     <View
@@ -31,13 +36,17 @@ function VolumeReadout({ exerciseKg, tutSeconds, dayKg, unit, mode }: { exercise
       accessibilityLabel={
         mode === 'time'
           ? `Time under tension: ${formatDuration(tutSeconds)} this exercise. Today's total volume: ${fmtVolume(dayKg, unit)} ${unit}`
-          : `Volume: ${fmtVolume(exerciseKg, unit)} ${unit} this exercise, ${fmtVolume(dayKg, unit)} ${unit} today`
+          : repsOnly
+            ? `${reps} reps this exercise, ${fmtVolume(dayKg, unit)} ${unit} today`
+            : `Volume: ${fmtVolume(exerciseKg, unit)} ${unit} this exercise, ${fmtVolume(dayKg, unit)} ${unit} today`
       }
     >
       <View className="flex-1">
-        <Text className="text-meta text-muted">{mode === 'time' ? 'Time under tension' : 'This exercise'}</Text>
+        <Text className="text-meta text-muted">{mode === 'time' ? 'Time under tension' : repsOnly ? 'Total reps' : 'This exercise'}</Text>
         {mode === 'time' ? (
           <AnimatedNumber value={tutSeconds} format={formatDuration} className="text-metric text-label" />
+        ) : repsOnly ? (
+          <AnimatedNumber value={reps} className="text-metric text-label" />
         ) : (
           <View className="flex-row items-baseline gap-1">
             <AnimatedNumber value={Math.round(toDisplay(exerciseKg, unit))} className="text-metric text-label" />
@@ -65,6 +74,8 @@ interface Props {
   /** The search bar (it owns its own open/closed state, which the screen needs to know about). */
   search: ReactNode;
   searching: boolean;
+  /** Show the full-screen rest countdown over the drawer. */
+  restOpen: boolean;
   active: Exercise | null;
   rows: SetRow[];
   ghosts: Ghost[];
@@ -101,6 +112,7 @@ export function WorkoutRecorderSheet(p: Props) {
   const [hint, setHint] = useState<string | null>(null);
 
   const anyLogged = p.rows.some((r) => r.done);
+  const load = loadOf(p.active);
 
   // A hint belongs to the moment you pressed Done: drop it as soon as anything changes.
   useEffect(() => setHint(null), [anyLogged, p.active?.id, p.visible]);
@@ -121,7 +133,7 @@ export function WorkoutRecorderSheet(p: Props) {
 
   const footer = (
     <View>
-      <RestBannerSlot />
+      {p.restOpen ? null : <RestBannerSlot />}
       <LogDock
         compact
         activeRow={p.activeRow}
@@ -130,6 +142,7 @@ export function WorkoutRecorderSheet(p: Props) {
         unit={p.unit}
         step={p.step}
         mode={p.mode}
+        load={load}
         onChange={p.onChange}
         onLog={p.onLog}
         onAdd={p.onAdd}
@@ -161,12 +174,15 @@ export function WorkoutRecorderSheet(p: Props) {
       label="Record exercise"
       overlays={
         // Inside the drawer's own modal, so it stacks on top of it (a Modal opened from a Modal).
-        <SetDetailsSheet
-          visible={detailsId != null}
-          onClose={() => setDetailsId(null)}
-          row={p.rows.find((r) => r.id === detailsId)}
-          index={Math.max(0, p.rows.findIndex((r) => r.id === detailsId))}
-        />
+        <>
+          <SetDetailsSheet
+            visible={detailsId != null}
+            onClose={() => setDetailsId(null)}
+            row={p.rows.find((r) => r.id === detailsId)}
+            index={Math.max(0, p.rows.findIndex((r) => r.id === detailsId))}
+          />
+          {p.restOpen ? <RestOverlay /> : null}
+        </>
       }
     >
       {p.search}
@@ -177,6 +193,7 @@ export function WorkoutRecorderSheet(p: Props) {
 
           {p.active ? (
             <>
+              <ExerciseMedia exercise={p.active} />
               <View className="flex-row items-center justify-between">
                 <Text className="flex-1 pr-3 text-meta text-muted" accessibilityLabel={p.lastTime ?? `First time logging ${p.active.name}`}>
                   {p.lastTime ?? `First time logging ${p.active.name}. Today’s sets become your baseline.`}
@@ -189,6 +206,7 @@ export function WorkoutRecorderSheet(p: Props) {
                 prevSets={p.prevSets}
                 unit={p.unit}
                 mode={p.mode}
+                load={load}
                 activeRowId={p.activeRow?.id}
                 onChange={p.onChange}
                 onLog={p.onLog}
@@ -196,11 +214,11 @@ export function WorkoutRecorderSheet(p: Props) {
                 onRemove={p.onRemove}
                 onDetails={setDetailsId}
               />
-              <VolumeReadout exerciseKg={p.exerciseKg} tutSeconds={p.tutSeconds} dayKg={p.dayKg} unit={p.unit} mode={p.mode} />
+              <VolumeReadout exerciseKg={p.exerciseKg} tutSeconds={p.tutSeconds} reps={exerciseReps(p.rows)} dayKg={p.dayKg} unit={p.unit} mode={p.mode} />
               <TimerDashboard />
               <ExerciseInsights exercise={p.active} entries={p.entries} rows={p.rows} today={p.today} unit={p.unit} mode={p.mode} step={p.step} onApply={p.onApply} />
-              {/* Goals are a weight target, which doesn't apply to a timed hold — the note field still does. */}
-              <ExerciseGoalCard exercise={p.active} entries={p.entries} hideGoal={p.mode === 'time'} />
+              {/* Goals are a weight target, which doesn't apply to a timed hold or a no-weight move — the note field still does. */}
+              <ExerciseGoalCard exercise={p.active} entries={p.entries} hideGoal={p.mode === 'time' || load !== 'kg'} />
             </>
           ) : (
             <View className="items-center px-6 py-6">

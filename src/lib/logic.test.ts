@@ -32,6 +32,9 @@ describe('search', () => {
   });
 
   it('matches aliases and later words', () => {
+    assert.equal(new Set(CATALOG.map((e) => e.id)).size, CATALOG.length); // every id is unique
+    assert.equal(CATALOG.some((e) => /\((male|female)\)|\bpov\b|lever\b|в°/i.test(e.name)), false); // imported names were cleaned
+    assert.equal(searchExercises('pull-up', CATALOG, new Map())[0].name, 'Pull-Up'); // the plain lift beats its variations
     assert.equal(searchExercises('ohp', CATALOG, new Map())[0].name, 'Overhead Press');
     assert.ok(searchExercises('db press', CATALOG, new Map()).some((e) => e.name === 'Incline Dumbbell Press'));
   });
@@ -317,7 +320,7 @@ describe('rest timer engine', () => {
     assert.deepEqual(parseTimerSettings('{nope'), defaultTimerSettings);
     const s = parseTimerSettings(JSON.stringify({ saved: [{ id: 'a', label: 'Squat', seconds: 105 }, { id: 5 }, null], defaultSeconds: -1, autoStart: 'yes' }));
     assert.equal(s.saved.length, 1);
-    assert.equal(s.defaultSeconds, 90);
+    assert.equal(s.defaultSeconds, 60);
     assert.equal(s.autoStart, true);
   });
 

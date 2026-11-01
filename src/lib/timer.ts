@@ -1,7 +1,7 @@
 /* ─────────────────────────── Constants & formatting ─────────────────────────── */
 
 export const PRESETS = [30, 60, 90, 120] as const;
-export const DEFAULT_REST_SECONDS = 90;
+export const DEFAULT_REST_SECONDS = 60;
 /** The countdown turns yellow for the final 10 seconds. */
 export const WARN_MS = 10_000;
 export const MAX_SAVED = 20;

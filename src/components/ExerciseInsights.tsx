@@ -4,7 +4,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { relativeDay, shortDate } from '../lib/dates';
 import { formatDuration } from '../lib/duration';
 import { haptic } from '../lib/haptics';
-import { bestsOf, previousEntry, suggestNext, topSet } from '../lib/progress';
+import { bestsOf, fmtSet, previousEntry, suggestNext, topSet } from '../lib/progress';
 import { fmtDelta, fmtWeight, fmtWeightUnit } from '../lib/units';
 import { colors } from '../theme';
 import type { Exercise, HistoryEntry, SetMode, SetRow, Unit } from '../types';
@@ -45,7 +45,7 @@ export function ExerciseInsights({ exercise, entries, rows, today, unit, mode, s
   const chronological = useMemo(() => [...(entries ?? [])].reverse(), [entries]);
   // For a hold, the "best set" of a session is its longest (topSet already prefers the bigger second
   // number once weight ties, which is exactly right for a bodyweight plank).
-  const trend = useMemo(() => chronological.slice(-10).map((e) => (isTime ? topSet(e).reps : topSet(e).weight)), [chronological, isTime]);
+  const trend = useMemo(() => chronological.slice(-10).map((e) => (isTime ? topSet(e).reps : topSet(e).weight || topSet(e).reps)), [chronological, isTime]);
   const first = chronological[0];
   const bestHold = bests?.heaviest.reps ?? 0;
   const gain = first ? (isTime ? bestHold - topSet(first).reps : bests ? bests.heaviest.weight - topSet(first).weight : 0) : 0;
@@ -86,9 +86,9 @@ export function ExerciseInsights({ exercise, entries, rows, today, unit, mode, s
             </>
           ) : (
             <>
-              <Stat label="Best" value={`${fmtWeight(bests.heaviest.weight, unit)} × ${bests.heaviest.reps}`} sub={unit} />
-              <Stat label="Est. 1RM" value={fmtWeight(bests.e1rm, unit)} sub={unit} />
-              <Stat label="Last" value={`${fmtWeight(topSet(prev).weight, unit)} × ${topSet(prev).reps}`} sub={relativeDay(prev.date, today)} />
+              <Stat label="Best" value={fmtSet(bests.heaviest, unit)} sub={bests.heaviest.weight > 0 ? unit : undefined} />
+              {bests.e1rm > 0 ? <Stat label="Est. 1RM" value={fmtWeight(bests.e1rm, unit)} sub={unit} /> : null}
+              <Stat label="Last" value={fmtSet(topSet(prev), unit)} sub={relativeDay(prev.date, today)} />
             </>
           )}
         </View>
@@ -163,11 +163,11 @@ function HistorySheet({
               <View className="flex-1 pr-3">
                 <Text className="text-body font-medium text-label">{entry.date === today ? 'Today' : shortDate(entry.date)}</Text>
                 <Text className="text-caption tabular-nums text-muted">
-                  {entry.sets.map((s) => (isTime ? formatDuration(s.reps) : `${fmtWeight(s.weight, unit)}×${s.reps}`)).join('  ·  ')}
+                  {entry.sets.map((s) => (isTime ? formatDuration(s.reps) : fmtSet(s, unit))).join('  ·  ')}
                 </Text>
               </View>
               <View className="items-end">
-                <Num size="text-h2">{isTime ? formatDuration(top.reps) : fmtWeightUnit(top.weight, unit)}</Num>
+                <Num size="text-h2">{isTime ? formatDuration(top.reps) : top.weight > 0 ? fmtWeightUnit(top.weight, unit) : `${top.reps} reps`}</Num>
                 {isTime ? (
                   diff !== 0 ? (
                     <Text className="text-caption font-semibold tabular-nums" style={{ color: diff > 0 ? colors.accent : colors.muted }}>

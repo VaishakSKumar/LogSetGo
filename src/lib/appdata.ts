@@ -1,5 +1,6 @@
 import { DEFAULT_PREFS, type AppData, type Exercise, type Goal, type Routine, type SetMode, type Session } from '../types';
 import { MAX_CUSTOM_DAY_LABELS } from './daylabels';
+import { parseYouTubeId } from './media';
 import { DAY_LABELS } from './progress';
 
 export const EMPTY_APP_DATA: AppData = {
@@ -14,6 +15,7 @@ export const EMPTY_APP_DATA: AppData = {
   customDayLabels: [],
   hiddenDayLabels: [],
   exerciseModes: {},
+  exerciseVideos: {},
 };
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -57,6 +59,14 @@ function cleanExerciseModes(raw: unknown): Record<string, SetMode> {
   return out;
 }
 
+/** Drops anything that isn't an exercise id with a real YouTube link. */
+function cleanExerciseVideos(raw: unknown): Record<string, string> {
+  if (!isObj(raw)) return {};
+  const out: Record<string, string> = {};
+  for (const [id, url] of Object.entries(raw)) if (typeof url === 'string' && parseYouTubeId(url)) out[id] = url;
+  return out;
+}
+
 /**
  * Turns anything that looks like saved data into a complete, safe AppData, filling in
  * fields added in later versions. Returns null if it isn't LogSetGo data at all.
@@ -83,6 +93,7 @@ export function normalizeAppData(input: unknown): AppData | null {
     customDayLabels: cleanDayLabels(p.customDayLabels),
     hiddenDayLabels: cleanHiddenDayLabels(p.hiddenDayLabels),
     exerciseModes: cleanExerciseModes(p.exerciseModes),
+    exerciseVideos: cleanExerciseVideos(p.exerciseVideos),
   };
 }
 
@@ -117,5 +128,6 @@ export function mergeAppData(current: AppData, incoming: AppData): AppData {
     hiddenDayLabels,
     // Same rule as goals: yours wins where you've both set one, theirs fills in what you haven't.
     exerciseModes: { ...incoming.exerciseModes, ...current.exerciseModes },
+    exerciseVideos: { ...incoming.exerciseVideos, ...current.exerciseVideos },
   };
 }

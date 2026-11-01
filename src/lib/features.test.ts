@@ -12,7 +12,10 @@ import { DEFAULT_BAR, oneRepMax, percentTable, platesPerSide, PLATES, warmupSets
 import { buildDemoData } from './demo';
 import { addCustomDayLabel, hideDefaultDayLabel, isDefaultDayLabel, MAX_CUSTOM_DAY_LABELS, MAX_DAY_LABEL_LENGTH, normalizeDayLabel, removeCustomDayLabel, visibleDefaultDayLabels } from './daylabels';
 import { formatDuration, parseDurationInput } from './duration';
-import { bestDurationExcluding, buildDurationHistory, buildHistory, DAY_LABELS, isLogged, isTimeSet, setKg, suggestNext, weekTotals } from './progress';
+import { cuesFor } from '../data/formCues';
+import { parseYouTubeId } from './media';
+import { MAX_PHOTO_BYTES, needsMonthlyPhoto, photoError, previousPhoto } from './photoCheck';
+import { bestDurationExcluding, buildDurationHistory, buildHistory, DAY_LABELS, isLogged, isTimeSet, loadOf, resolveSet, setKg, suggestNext, weekTotals } from './progress';
 import { exerciseTut, exerciseVolume, formatSets, loggedExercises, summarizeDay } from './session';
 import { PLAN_EXERCISE_IDS, buildPlan, routineFromSession, routineIdFor, type PlanDays } from './routines';
 import { e1rmSeries, goalProgress, muscleSplit, recordsList, weeklyBuckets, workoutSummary } from './stats';
@@ -715,5 +718,83 @@ describe('time-based sets', () => {
       assert.equal(rows[1].weight, 0); // defaults to bodyweight now that it is a hold
       assert.equal(next.sessions['2026-09-20'].exercises.plank[0].mode, 'reps'); // a different day is never touched
     });
+  });
+});
+
+describe('sets with no kg', () => {
+  const bare = (reps: number | null) => row('1', null, reps);
+
+  it('a blank kg box still logs, and a ghost weight still wins', () => {
+    assert.deepEqual(resolveSet(bare(10), { weight: null, reps: null }), { weight: 0, reps: 10 });
+    assert.deepEqual(resolveSet(bare(10), { weight: 20, reps: null }), { weight: 20, reps: 10 });
+    assert.equal(resolveSet(bare(null), { weight: null, reps: null }), null);
+  });
+
+  it('the kg box follows the exercise', () => {
+    assert.equal(loadOf(CATALOG.find((e) => e.id === 'barbell-bench-press')), 'kg');
+    assert.equal(loadOf(CATALOG.find((e) => e.id === 'pull-up')), 'extra');
+    assert.equal(loadOf(CATALOG.find((e) => e.id === 'treadmill-run')), 'none');
+  });
+
+  it('sets read as reps, and the next target is one more rep rather than added kg', () => {
+    const prev = [{ weight: 0, reps: 8 }, { weight: 0, reps: 10 }];
+    assert.equal(formatSets(prev, 'kg'), '8 reps · 10 reps');
+    const s = suggestNext(prev, 'kg', 2.5);
+    assert.equal(s?.headline, '11 reps');
+    assert.ok(s?.sets.every((x) => x.weight === 0 && x.reps === 11));
+  });
+
+  it('beating your best reps is a PR', () => {
+    const log = (state: typeof initialData, rowId: string, reps: number, date: string) => reducer(state, { type: 'toggle', date, rowId, weight: 0, reps, at: 1 } as never);
+    let s = reducer(initialData, { type: 'select', id: 'pull-up', date: '2026-10-01', mode: 'reps' });
+    s = log(s, s.sessions['2026-10-01'].exercises['pull-up'][0].id, 8, '2026-10-01');
+    s = reducer(s, { type: 'select', id: 'pull-up', date: '2026-10-02', mode: 'reps' });
+    s = log(s, s.sessions['2026-10-02'].exercises['pull-up'][0].id, 9, '2026-10-02');
+    assert.equal(s.sessions['2026-10-02'].exercises['pull-up'][0].pr, true);
+  });
+});
+
+describe('monthly photo rules', () => {
+  const photo = (date: string) => ({ date, uri: 'x', mimeType: 'image/png', size: 1 });
+
+  it('allows the four formats up to 10 MB, and nothing else', () => {
+    for (const [name, mime] of [['a.gif', 'image/gif'], ['a.jpg', 'image/jpeg'], ['a.png', 'image/png'], ['a.webp', 'image/webp']]) assert.equal(photoError(name, mime, 100), null);
+    assert.equal(photoError('a.png', null, 100), null);
+    assert.equal(photoError('a.png', 'image/png', MAX_PHOTO_BYTES), null);
+    assert.match(photoError('a.png', 'image/png', MAX_PHOTO_BYTES + 1)!, /too big/);
+    assert.match(photoError('a.pdf', 'application/pdf', 100)!, /Only GIF/);
+    assert.match(photoError('a.docx', null, 100)!, /Only GIF/);
+    assert.match(photoError('a.pdf.exe', 'application/octet-stream', 100)!, /Only GIF/);
+    assert.match(photoError('a.heic', 'image/heic', 100)!, /Only GIF/);
+    assert.match(photoError('a.png', 'image/png', null)!, /size/);
+  });
+
+  it('is due once per calendar month, and compares with the latest earlier photo', () => {
+    const photos = { '2026-09-02': photo('2026-09-02'), '2026-10-03': photo('2026-10-03') };
+    assert.equal(needsMonthlyPhoto({}, '2026-11-01'), true);
+    assert.equal(needsMonthlyPhoto(photos, '2026-11-01'), true);
+    assert.equal(needsMonthlyPhoto(photos, '2026-10-30'), false);
+    assert.equal(previousPhoto(photos, '2026-11-01')?.date, '2026-10-03');
+    assert.equal(previousPhoto({}, '2026-11-01'), null);
+  });
+});
+
+describe('form videos', () => {
+  it('reads common YouTube links and rejects everything else', () => {
+    for (const url of ['https://youtu.be/dQw4w9WgXcQ', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=3', 'https://youtube.com/watch?list=x&v=dQw4w9WgXcQ', 'youtube.com/shorts/dQw4w9WgXcQ', 'https://m.youtube.com/embed/dQw4w9WgXcQ?x=1']) {
+      assert.equal(parseYouTubeId(url), 'dQw4w9WgXcQ');
+    }
+    for (const url of ['https://example.com/watch?v=dQw4w9WgXcQ', 'https://youtu.be/short', '', 'javascript:alert(1)']) assert.equal(parseYouTubeId(url), null);
+  });
+
+  it('keeps valid links through a save and drops bad ones', () => {
+    const clean = normalizeAppData({ ...EMPTY_APP_DATA, exerciseVideos: { a: 'https://youtu.be/dQw4w9WgXcQ', b: 'https://example.com' } });
+    assert.deepEqual(clean?.exerciseVideos, { a: 'https://youtu.be/dQw4w9WgXcQ' });
+    assert.deepEqual(normalizeAppData({ version: 1, sessions: {} })?.exerciseVideos, {});
+  });
+
+  it('gives every exercise some form cues', () => {
+    assert.ok(cuesFor({ name: 'Barbell Bench Press', group: 'Chest' }).includes('Keep elbows tucked'));
+    assert.ok(CATALOG.every((e) => cuesFor(e).length > 0));
   });
 });

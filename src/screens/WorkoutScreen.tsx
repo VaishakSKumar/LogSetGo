@@ -59,6 +59,7 @@ export function WorkoutScreen() {
   const [heroSearchOpen, setHeroSearchOpen] = useState(false);
   const [drawerSearchOpen, setDrawerSearchOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [restOpen, setRestOpen] = useState(false);
   const [stackHeight, setStackHeight] = useState(0);
   const [sheet, setSheet] = useState<QuickSheet | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
@@ -116,9 +117,15 @@ export function WorkoutScreen() {
     setHeroSearchOpen(false);
   }, [today]);
 
+  // The overlay leaves with the timer: Skip, or the short linger after 0:00.
+  useEffect(() => {
+    if (timer.status === 'idle') setRestOpen(false);
+  }, [timer.status]);
+
   const closeDrawer = useCallback(() => {
     modalClosedAt.current = Date.now();
     setDrawerOpen(false);
+    setRestOpen(false);
     setDrawerSearchOpen(false);
     setHeroSearchOpen(false);
     Keyboard.dismiss();
@@ -147,7 +154,10 @@ export function WorkoutScreen() {
     (rowId: string, weight: number, reps: number) => {
       const wasDone = rows.find((r) => r.id === rowId)?.done ?? false;
       actions.toggleSet(rowId, weight, reps);
-      if (!wasDone && settings.autoStart && today === realToday) controls.start(settings.defaultSeconds);
+      if (!wasDone && settings.autoStart && today === realToday) {
+        controls.start(settings.defaultSeconds);
+        setRestOpen(true);
+      }
     },
     [rows, actions, settings.autoStart, settings.defaultSeconds, controls, today, realToday],
   );
@@ -254,6 +264,7 @@ export function WorkoutScreen() {
         onDone={finishDrawer}
         search={<ExerciseSearch variant="sheet" open={drawerSearchOpen} onOpenChange={setDrawerSearchOpen} />}
         searching={drawerSearchOpen}
+        restOpen={restOpen}
         active={active}
         rows={rows}
         ghosts={ghosts}

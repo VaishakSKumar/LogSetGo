@@ -6,7 +6,8 @@ import { CalendarScreen } from '../screens/CalendarScreen';
 import { renderWithApp } from './helpers';
 
 const today = dateKey();
-const tile = () => screen.getByLabelText(new RegExp(`^${longDate(today)}`));
+// The trailing boundary stops "November 1" also matching "November 15".
+const tile = () => screen.getByLabelText(new RegExp(`^${longDate(today)}[,.]`));
 
 describe('Attendance flow', () => {
   it('Absent marks the date and stays on the calendar; Present routes to the workout', async () => {
