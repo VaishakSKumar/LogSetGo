@@ -12,6 +12,10 @@ export const STATUS_META: Record<Status, { label: string; letter: string; color:
 
 export const STATUSES: Status[] = ['present', 'absent', 'holiday'];
 
+/** The 7-day capsule row. */
+export const CAPSULE_COLORS: Record<Status, string> = { present: '#2CE573', absent: '#FF4D4D', holiday: '#FFC107' };
+export const CAPSULE_NEUTRAL = { background: '#1C1C1E', border: '#3A3A3C', text: '#8E8E93' };
+
 /**
  * Holidays are excused days, so by default they stay out of the attendance-rate denominator.
  * Flip this to count them as "logged days".

@@ -34,6 +34,8 @@ export interface GymActions {
   setLabel(label: string): void;
   /** Your Reps-vs-Time choice for one exercise, remembered from now on. Today's not-yet-logged rows switch immediately. */
   setExerciseMode(exerciseId: string, mode: SetMode): void;
+  /** Saves a pasted YouTube link for an exercise, or removes it with `null`. */
+  setExerciseVideo(exerciseId: string, url: string | null): void;
   /** Saves a custom workout day name and applies it to the day being logged, in one step. No-op for blank input. */
   addDayLabel(name: string): void;
   /** Removes a custom day name from the picker. Days already logged under it keep their label. */
@@ -192,6 +194,7 @@ export function GymProvider({ children }: { children: ReactNode }) {
       fillSets: (values) => dispatch({ type: 'fill', date: todayRef.current, values }),
       setLabel: (label) => dispatch({ type: 'label', date: todayRef.current, label }),
       setExerciseMode: (exerciseId, mode) => dispatch({ type: 'setExerciseMode', date: todayRef.current, exerciseId, mode }),
+      setExerciseVideo: (exerciseId, url) => dispatch({ type: 'setExerciseVideo', exerciseId, url }),
       addDayLabel: (name) => {
         const label = normalizeDayLabel(name);
         if (!label) return;

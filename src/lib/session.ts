@@ -1,6 +1,6 @@
 import type { SetMode, SetPerf, SetRow, Session, Unit } from '../types';
 import { formatDuration } from './duration';
-import { isLogged, isTimeSet, setKg } from './progress';
+import { fmtSet, isLogged, isTimeSet, setKg } from './progress';
 import { fmtWeight } from './units';
 
 /** A finished set as shown on an exercise card, with the number it has in the entry table. */
@@ -35,6 +35,9 @@ export const exerciseVolume = (rows: SetRow[]) => rows.reduce((sum, r) => (isLog
 
 /** Seconds under tension across the working time-based sets of one exercise. */
 export const exerciseTut = (rows: SetRow[]) => rows.reduce((sum, r) => (isLogged(r) && isTimeSet(r) ? sum + r.reps! : sum), 0);
+
+/** Reps across the working rep-based sets of one exercise. */
+export const exerciseReps = (rows: SetRow[]) => rows.reduce((sum, r) => (isLogged(r) && !isTimeSet(r) ? sum + r.reps : sum), 0);
 
 /**
  * The exercises that have at least one completed set on a day, in the order you first logged them.
@@ -82,7 +85,7 @@ export function summarizeDay(session: Session | undefined): DaySummary {
  */
 export function formatSets(sets: SetPerf[], unit: Unit, mode: SetMode = 'reps', max = 3): string {
   const one = (s: SetPerf) =>
-    mode === 'time' ? (s.weight > 0 ? `${fmtWeight(s.weight, unit)} ${unit} for ${formatDuration(s.reps)}` : formatDuration(s.reps)) : `${fmtWeight(s.weight, unit)} × ${s.reps}`;
+    mode === 'time' ? (s.weight > 0 ? `${fmtWeight(s.weight, unit)} ${unit} for ${formatDuration(s.reps)}` : formatDuration(s.reps)) : fmtSet(s, unit);
   const shown = sets.slice(0, max).map(one);
   const rest = sets.length - shown.length;
   return rest > 0 ? `${shown.join(' · ')} · +${rest} more` : shown.join(' · ');

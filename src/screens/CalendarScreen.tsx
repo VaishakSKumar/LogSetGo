@@ -3,8 +3,11 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnalyticsCard } from '../components/attendance/AnalyticsCard';
+import { AttendanceStatusSheet } from '../components/attendance/AttendanceStatusSheet';
 import { DateTile, EmptyTile } from '../components/attendance/DateTile';
+import { PunchCard } from '../components/attendance/PunchCard';
 import { StatusSheet } from '../components/attendance/StatusSheet';
+import { WeekCapsules } from '../components/attendance/WeekCapsules';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/Icons';
 import { Caption } from '../components/ui';
 import { isFuture, STATUS_META, STATUSES, type Status } from '../lib/attendance';
@@ -34,6 +37,7 @@ export function CalendarScreen({ onOpenWorkout }: Props) {
   const [month, setMonth] = useState(() => firstOfMonth(realToday));
   const [picked, setPicked] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [punchOpen, setPunchOpen] = useState(false);
 
   const weeks = useMemo(() => monthGrid(month), [month]);
   const onCurrentMonth = month === firstOfMonth(realToday);
@@ -53,6 +57,13 @@ export function CalendarScreen({ onOpenWorkout }: Props) {
     setSheetOpen(false);
     // Present hands off to the workout screen; Absent and Holiday stay right here.
     if (status === 'present') onOpenWorkout(picked);
+  };
+
+  const punch = (status: Status) => {
+    haptic.pulse();
+    setStatus(realToday, status);
+    setPunchOpen(false);
+    if (status === 'present') onOpenWorkout(realToday);
   };
 
   const clear = () => {
@@ -77,6 +88,15 @@ export function CalendarScreen({ onOpenWorkout }: Props) {
           <Text className="text-caption uppercase tracking-wider text-muted/60">{headerDate(realToday)}</Text>
           <Text className="py-1 text-h1 text-label">Attendance</Text>
         </View>
+
+        <PunchCard
+          status={statuses[realToday]}
+          onPress={() => {
+            haptic.tap();
+            setPunchOpen(true);
+          }}
+        />
+        <WeekCapsules statuses={statuses} today={realToday} />
 
         <AnalyticsCard stats={stats} />
 
@@ -161,6 +181,7 @@ export function CalendarScreen({ onOpenWorkout }: Props) {
         <Caption className="-mt-2 text-center">Tap a date to log it. Present opens your workout.</Caption>
       </ScrollView>
 
+      <AttendanceStatusSheet visible={punchOpen} onSelect={punch} onClose={() => setPunchOpen(false)} />
       <StatusSheet
         visible={sheetOpen}
         date={picked}

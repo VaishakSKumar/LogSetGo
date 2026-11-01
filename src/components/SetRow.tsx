@@ -12,10 +12,10 @@ import Animated, {
 
 import { formatDuration, parseDurationInput } from '../lib/duration';
 import { haptic } from '../lib/haptics';
-import { resolveSet } from '../lib/progress';
-import { fmtDelta, fmtWeight, fromDisplay, roundDisplay, toDisplay } from '../lib/units';
+import { fmtSet, resolveSet } from '../lib/progress';
+import { fmtDelta, fromDisplay, roundDisplay, toDisplay } from '../lib/units';
 import { colors, motion, roundedFont } from '../theme';
-import type { Ghost, SetMode, SetPerf, SetRow as SetRowData, Unit } from '../types';
+import type { Ghost, LoadKind, SetMode, SetPerf, SetRow as SetRowData, Unit } from '../types';
 import { CheckIcon } from './Icons';
 
 /* ─────────────── Column widths shared with the table header ─────────────── */
@@ -38,7 +38,7 @@ const CELL: Record<CellKind, { format: (n: number) => string; parse: (text: stri
     format: (n) => String(n),
     parse: (t) => {
       const n = parseFloat(t.replace(',', '.'));
-      return Number.isFinite(n) && n > 0 ? roundDisplay(n) : null;
+      return Number.isFinite(n) && n >= 0 ? roundDisplay(n) : null;
     },
     keyboard: 'decimal-pad',
   },
@@ -81,6 +81,7 @@ function NumberCell({ value, ghost, locked, kind, label, onCommit }: NumberCellP
 
   const isGhost = value == null && ghost != null;
   const shown = value ?? ghost;
+  const noWeight = kind === 'weight' && shown === 0;
 
   const begin = () => {
     if (locked) return;
@@ -129,9 +130,9 @@ function NumberCell({ value, ghost, locked, kind, label, onCommit }: NumberCellP
     >
       <Text
         className="text-right text-num tabular-nums"
-        style={{ fontFamily: roundedFont, color: isGhost ? colors.ghost : shown == null ? colors.outline : colors.label }}
+        style={{ fontFamily: roundedFont, color: isGhost ? colors.ghost : shown == null || noWeight ? colors.outline : colors.label }}
       >
-        {shown == null ? '–' : kind === 'duration' ? format(shown) : shown}
+        {shown == null || noWeight ? '–' : kind === 'duration' ? format(shown) : shown}
       </Text>
     </Pressable>
   );
@@ -186,6 +187,7 @@ interface SetRowProps {
   ghost: Ghost;
   unit: Unit;
   active: boolean;
+  load?: LoadKind;
   onChange: (rowId: string, field: 'weight' | 'reps', value: number | null) => void;
   onLog: (rowId: string, weight: number, reps: number) => void;
   onDetails: (rowId: string) => void;
@@ -203,7 +205,7 @@ function deltaOf(row: SetRowData, prev: SetPerf | undefined, unit: Unit, mode: S
   return { text: `${dr > 0 ? '+' : '−'}${Math.abs(dr)} rep${Math.abs(dr) > 1 ? 's' : ''}`, positive: dr > 0 };
 }
 
-function SetRowView({ index, row, prev, ghost, unit, active, onChange, onLog, onDetails }: SetRowProps) {
+function SetRowView({ index, row, prev, ghost, unit, active, load = 'kg', onChange, onLog, onDetails }: SetRowProps) {
   const mode = row.mode ?? 'reps';
   const glow = useSharedValue(0);
   const pop = useSharedValue(1);
@@ -280,7 +282,7 @@ function SetRowView({ index, row, prev, ghost, unit, active, onChange, onLog, on
 
         <View className={`${COL.previous} justify-center`}>
           <Text className="text-body tabular-nums text-muted/70" numberOfLines={1}>
-            {prev ? (mode === 'time' ? formatDuration(prev.reps) : `${fmtWeight(prev.weight, unit)} × ${prev.reps}`) : '—'}
+            {prev ? (mode === 'time' ? formatDuration(prev.reps) : fmtSet(prev, unit)) : '—'}
           </Text>
           {delta ? (
             <Text className="text-caption font-semibold tabular-nums" style={{ color: delta.positive ? colors.accent : colors.muted }}>
@@ -289,18 +291,20 @@ function SetRowView({ index, row, prev, ghost, unit, active, onChange, onLog, on
           ) : null}
         </View>
 
-        <View className="flex-1">
-          <NumberCell
-            label={`Set ${index + 1} weight in ${unit}`}
-            value={weightDisplay}
-            ghost={weightGhost}
-            locked={done}
-            kind="weight"
-            onCommit={(v) => onChange(row.id, 'weight', v == null ? null : fromDisplay(v, unit))}
-          />
-        </View>
+        {load === 'none' ? null : (
+          <View className="flex-1">
+            <NumberCell
+              label={`Set ${index + 1} weight in ${unit}`}
+              value={weightDisplay}
+              ghost={weightGhost}
+              locked={done}
+              kind="weight"
+              onCommit={(v) => onChange(row.id, 'weight', v == null ? null : fromDisplay(v, unit))}
+            />
+          </View>
+        )}
 
-        <View className={`${COL.reps} ml-2`}>
+        <View className={load === 'none' ? 'flex-1' : `${COL.reps} ml-2`}>
           <NumberCell
             label={`Set ${index + 1} ${mode === 'time' ? 'duration' : 'reps'}`}
             value={row.reps}

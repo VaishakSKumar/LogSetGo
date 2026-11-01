@@ -3,7 +3,7 @@ import Animated, { FadeIn, LinearTransition, SlideOutLeft } from 'react-native-r
 
 import { formatDuration } from '../../lib/duration';
 import { haptic } from '../../lib/haptics';
-import type { LoggedExercise } from '../../lib/session';
+import { exerciseReps, type LoggedExercise } from '../../lib/session';
 import { fmtVolume, roundDisplay, toDisplay } from '../../lib/units';
 import { colors, motion, roundedFont } from '../../theme';
 import type { Exercise, Unit } from '../../types';
@@ -30,6 +30,8 @@ const rounded = { fontFamily: roundedFont } as const;
 
 /** One logged exercise: name, muscle badge, the completed sets, and (unless read-only) a swipe-to-delete / ••• menu. */
 export function ExerciseLogCard({ entry, exercise, unit, previous, onMenu, onDelete, readOnly }: Props) {
+  const noKg = entry.sets.every(({ row }) => !row.weight);
+  const totalReps = exerciseReps(entry.sets.map(({ row }) => row));
   const card = (
     <View className="border p-4" style={{ backgroundColor: colors.surface, borderColor: colors.line, borderRadius: 24 }}>
       <View className="flex-row items-center justify-between">
@@ -67,7 +69,7 @@ export function ExerciseLogCard({ entry, exercise, unit, previous, onMenu, onDel
 
           <View className="mb-1 mt-3 flex-row items-center px-1">
             <Head className="w-10">Set</Head>
-            <Head className="flex-1 text-right">{unit}</Head>
+            {noKg ? <View className="flex-1" /> : <Head className="flex-1 text-right">{unit}</Head>}
             <Head className="w-16 text-right">{entry.mode === 'time' ? 'Time' : 'Reps'}</Head>
             <View className="w-11" />
           </View>
@@ -86,7 +88,7 @@ export function ExerciseLogCard({ entry, exercise, unit, previous, onMenu, onDel
                   {row.warmup ? 'W' : number}
                 </Text>
                 <Text className="flex-1 text-right text-body tabular-nums text-label" style={rounded}>
-                  {roundDisplay(toDisplay(row.weight ?? 0, unit))}
+                  {noKg ? '' : row.weight ? roundDisplay(toDisplay(row.weight, unit)) : '–'}
                 </Text>
                 <Text className="w-16 text-right text-body tabular-nums text-label" style={rounded}>
                   {isTime ? formatDuration(row.reps ?? 0) : row.reps}
@@ -103,6 +105,11 @@ export function ExerciseLogCard({ entry, exercise, unit, previous, onMenu, onDel
       {entry.mode === 'time' ? (
         <Text className="mt-2 text-meta text-muted" accessibilityLabel={`Time under tension ${formatDuration(entry.tutSeconds)}`}>
           Time under tension {formatDuration(entry.tutSeconds)}
+          {entry.workingSets !== entry.sets.length ? ' · warm-ups not counted' : ''}
+        </Text>
+      ) : noKg ? (
+        <Text className="mt-2 text-meta text-muted" accessibilityLabel={`Total reps ${totalReps}`}>
+          Total reps {totalReps}
           {entry.workingSets !== entry.sets.length ? ' · warm-ups not counted' : ''}
         </Text>
       ) : (

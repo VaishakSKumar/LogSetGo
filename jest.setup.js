@@ -34,7 +34,15 @@ jest.mock('expo-notifications', () => ({
 
 jest.mock('expo-document-picker', () => ({ getDocumentAsync: jest.fn(() => Promise.resolve({ canceled: true })) }));
 jest.mock('expo-sharing', () => ({ isAvailableAsync: jest.fn(() => Promise.resolve(true)), shareAsync: jest.fn(() => Promise.resolve()) }));
-jest.mock('expo-file-system', () => ({ File: class {}, Paths: { cache: '' } }));
+jest.mock('expo-file-system', () => ({ File: class {}, Directory: class {}, Paths: { cache: '', document: '' } }));
+jest.mock('expo-image-picker', () => ({
+  requestCameraPermissionsAsync: jest.fn(() => Promise.resolve({ granted: true })),
+  launchCameraAsync: jest.fn(() => Promise.resolve({ canceled: true })),
+}));
+jest.mock('react-native-webview', () => {
+  const { View } = require('react-native');
+  return { WebView: View };
+});
 
 // Every test starts with empty storage, like a fresh install.
 beforeEach(async () => {

@@ -1,19 +1,24 @@
 import { useMemo, useRef, useState } from 'react';
-import { Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { haptic } from '../lib/haptics';
 import { relativeDay } from '../lib/dates';
-import { topSet } from '../lib/progress';
+import { fmtSet, topSet } from '../lib/progress';
 import { ghostSuffix, searchExercises, shouldOfferCreate, tidyName } from '../lib/search';
 import { browseExercises } from '../lib/suggest';
 import { fmtWeight } from '../lib/units';
 import { useGym } from '../store/gym';
 import { colors, motion } from '../theme';
-import type { Exercise, MuscleGroup } from '../types';
+import type { Equipment, Exercise, MuscleGroup } from '../types';
 import { CloseIcon, PlusIcon, SearchIcon } from './Icons';
 
 const GROUPS: MuscleGroup[] = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Core', 'Cardio', 'Other'];
+
+const EQUIPMENT: Equipment[] = ['Barbell', 'Dumbbell', 'Machine', 'Cable', 'Bodyweight', 'Cardio'];
+
+/** How many rows a typed search or an equipment filter lists at once. */
+const LIST_LIMIT = 30;
 
 const INPUT_FONT = { fontSize: 17, letterSpacing: -0.2, fontWeight: '400' } as const;
 
@@ -46,12 +51,14 @@ export function ExerciseSearch({ open, onOpenChange, hero = false, showSelected 
   const inputRef = useRef<TextInput>(null);
   /** name waiting for a muscle group (custom exercise being created) */
   const [pendingName, setPendingName] = useState<string | null>(null);
+  const [equipment, setEquipment] = useState<Equipment | null>(null);
 
   const recencyRank = useMemo(() => new Map(recents.map((r, i) => [r.id, i])), [recents]);
   const lastDate = useMemo(() => new Map(recents.map((r) => [r.id, r.lastDate])), [recents]);
   const browse = useMemo(() => browseExercises(exercises, recents, label), [exercises, recents, label]);
 
-  const results = useMemo(() => (query.trim() ? searchExercises(query, exercises, recencyRank) : []), [query, exercises, recencyRank]);
+  const pool = useMemo(() => (equipment ? exercises.filter((e) => e.equipment === equipment) : exercises), [exercises, equipment]);
+  const results = useMemo(() => (query.trim() ? searchExercises(query, pool, recencyRank, LIST_LIMIT) : []), [query, pool, recencyRank]);
   const ghost = ghostSuffix(query, results[0]);
   const canCreate = shouldOfferCreate(query, exercises, results);
 
@@ -60,6 +67,7 @@ export function ExerciseSearch({ open, onOpenChange, hero = false, showSelected 
   const close = () => {
     setPendingName(null);
     setQuery('');
+    setEquipment(null);
     onOpenChange(false);
     Keyboard.dismiss();
   };
@@ -99,9 +107,10 @@ export function ExerciseSearch({ open, onOpenChange, hero = false, showSelected 
 
   const subtitle = (ex: Exercise) => {
     const n = setsToday(ex.id);
-    if (n > 0) return `${ex.group} · ${n} set${n > 1 ? 's' : ''} today`;
+    const kind = ex.equipment && ex.equipment !== ex.group ? `${ex.group} · ${ex.equipment}` : ex.group;
+    if (n > 0) return `${kind} · ${n} set${n > 1 ? 's' : ''} today`;
     const d = lastDate.get(ex.id);
-    return d ? `${ex.group} · ${relativeDay(d, today)}` : ex.group;
+    return d ? `${kind} · ${relativeDay(d, today)}` : kind;
   };
 
   const renderRow = (ex: Exercise, first: boolean) => {
@@ -111,7 +120,7 @@ export function ExerciseSearch({ open, onOpenChange, hero = false, showSelected 
       <Pressable
         key={ex.id}
         accessibilityRole="button"
-        accessibilityLabel={`${ex.name}${top ? `, last ${fmtWeight(top.weight, data.unit)} ${data.unit} for ${top.reps}` : ''}`}
+        accessibilityLabel={`${ex.name}${top ? `, last ${top.weight > 0 ? `${fmtWeight(top.weight, data.unit)} ${data.unit} for ${top.reps}` : `${top.reps} reps`}` : ''}`}
         onPress={() => choose(ex)}
         className={`min-h-[56px] flex-row items-center px-4 py-2 active:bg-fill/70 ${first ? '' : 'border-t border-line'}`}
         style={first ? undefined : { borderTopColor: colors.line }}
@@ -123,7 +132,13 @@ export function ExerciseSearch({ open, onOpenChange, hero = false, showSelected 
         {top ? (
           <View className="items-end">
             <Text className="text-body tabular-nums text-label">
-              {fmtWeight(top.weight, data.unit)} <Text className="text-muted">{data.unit}</Text> × {top.reps}
+              {top.weight > 0 ? (
+                <>
+                  {fmtWeight(top.weight, data.unit)} <Text className="text-muted">{data.unit}</Text> × {top.reps}
+                </>
+              ) : (
+                fmtSet(top, data.unit)
+              )}
             </Text>
             <Text className="text-caption text-muted/60">last time</Text>
           </View>
@@ -209,6 +224,31 @@ export function ExerciseSearch({ open, onOpenChange, hero = false, showSelected 
             paddingBottom: 4,
           }}
         >
+          {pendingName ? null : (
+            <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 12, paddingTop: 12 }}>
+              {EQUIPMENT.map((e) => {
+                const on = equipment === e;
+                return (
+                  <Pressable
+                    key={e}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${e} exercises`}
+                    accessibilityState={{ selected: on }}
+                    onPress={() => {
+                      haptic.tap();
+                      setEquipment(on ? null : e);
+                    }}
+                    className="h-9 items-center justify-center rounded-full px-3 active:opacity-70"
+                    style={{ backgroundColor: on ? colors.accent : colors.fill }}
+                  >
+                    <Text className="text-meta font-medium" style={{ color: on ? '#000' : colors.label }}>
+                      {e}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
           {pendingName ? (
             <View className="p-4">
               <Text className="text-h2 text-label">Which muscle group is “{pendingName}”?</Text>
@@ -242,6 +282,8 @@ export function ExerciseSearch({ open, onOpenChange, hero = false, showSelected 
                 </Pressable>
               ) : null}
             </>
+          ) : equipment ? (
+            renderSection(pool.length > LIST_LIMIT ? `${LIST_LIMIT} of ${pool.length}. Type to narrow` : equipment, pool.slice(0, LIST_LIMIT))
           ) : (
             <>
               {renderSection('Recent', browse.recent)}

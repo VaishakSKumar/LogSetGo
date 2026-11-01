@@ -2,7 +2,7 @@
   "expo": {
     "name": "LogSetGo",
     "slug": "minimalist-gym-tracker",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -48,7 +48,16 @@
         {
           "color": "#30D158"
         }
-      ]
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "LogSetGo uses the camera for your monthly progress photo.",
+          "photosPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "./plugins/with-android-lint"
     ],
     "extra": {
       "eas": {

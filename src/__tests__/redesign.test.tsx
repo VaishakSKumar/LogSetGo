@@ -1,0 +1,112 @@
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { useEffect } from 'react';
+import { Text } from 'react-native';
+
+import { MonthlyPhotoGate } from '../components/session/MonthlyPhotoGate';
+import { dateKey } from '../lib/dates';
+import { CalendarScreen } from '../screens/CalendarScreen';
+import { WorkoutScreen } from '../screens/WorkoutScreen';
+import { useGym } from '../store/gym';
+import { renderWithApp } from './helpers';
+
+const today = dateKey();
+const card = () => screen.getByLabelText(/^(Punch In|Start Workout|Rest day|Travel or holiday)\./);
+
+function WithBench() {
+  const { ready, actions } = useGym();
+  useEffect(() => {
+    if (ready) actions.selectExercise('barbell-bench-press');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
+  return <WorkoutScreen />;
+}
+
+describe('Punch In sheet', () => {
+  it('opens the sheet instead of marking today, and each option does its job', async () => {
+    const onOpenWorkout = jest.fn();
+    await renderWithApp(<CalendarScreen onOpenWorkout={onOpenWorkout} />);
+    await screen.findByText('Showed up');
+
+    await fireEvent.press(card());
+    await screen.findByLabelText('🔴 Mark Rest/Absent Day');
+    expect(screen.getByLabelText('Monday: Not logged')).toBeTruthy();
+    expect(onOpenWorkout).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByLabelText('🔴 Mark Rest/Absent Day'));
+    await screen.findByText('0 of 1 days');
+    expect(onOpenWorkout).not.toHaveBeenCalled();
+
+    await fireEvent.press(card());
+    await fireEvent.press(await screen.findByLabelText('🟡 Mark Travel/Holiday'));
+    await screen.findByText('0 of 0 days');
+    expect(onOpenWorkout).not.toHaveBeenCalled();
+
+    await fireEvent.press(card());
+    await fireEvent.press(await screen.findByLabelText('🟢 Start Workout'));
+    await waitFor(() => expect(onOpenWorkout).toHaveBeenCalledWith(today));
+  });
+});
+
+describe('Rest overlay', () => {
+  it('appears when a set is checked, and +15s and Skip work', async () => {
+    await renderWithApp(<WithBench />);
+    await screen.findAllByLabelText('Log set 1');
+    for (let i = 0; i < 5; i++) await fireEvent.press(screen.getByLabelText('Increase Reps'));
+    await fireEvent.press(screen.getAllByLabelText('Log set 1')[0]);
+
+    await screen.findByLabelText('Rest countdown');
+    expect(screen.getByLabelText('1:00 remaining')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('+15s'));
+    await screen.findByLabelText('1:15 remaining');
+    await fireEvent.press(screen.getByLabelText('Skip'));
+    await waitFor(() => expect(screen.queryByLabelText('Rest countdown')).toBeNull());
+  });
+});
+
+describe('Form guide', () => {
+  it('shows cues, rejects a bad link and plays a good one', async () => {
+    await renderWithApp(<WithBench />);
+    await screen.findByText('• Keep elbows tucked');
+
+    await fireEvent.changeText(screen.getByLabelText('YouTube link'), 'https://example.com/video');
+    await fireEvent.press(screen.getByLabelText('Add video'));
+    await screen.findByText('That isn’t a YouTube link.');
+
+    await fireEvent.changeText(screen.getByLabelText('YouTube link'), 'https://youtu.be/dQw4w9WgXcQ');
+    await fireEvent.press(screen.getByLabelText('Add video'));
+    await screen.findByLabelText('Exercise form video');
+  });
+});
+
+describe('Monthly photo gate', () => {
+  it('locks the workout and blocks a PDF with a clear warning', async () => {
+    jest.mocked(DocumentPicker.getDocumentAsync).mockResolvedValueOnce({
+      canceled: false,
+      assets: [{ uri: 'file:///a.pdf', name: 'a.pdf', mimeType: 'application/pdf', size: 1000, lastModified: 0 }],
+      output: null,
+    } as never);
+    await renderWithApp(
+      <MonthlyPhotoGate>
+        <Text>WORKOUT OPEN</Text>
+      </MonthlyPhotoGate>,
+    );
+
+    await screen.findByLabelText('Monthly photo check-in');
+    expect(screen.queryByText('WORKOUT OPEN')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Choose a file'));
+    await screen.findByText(/Only GIF, JPG, PNG or WebP files are allowed/);
+    expect(screen.queryByText('WORKOUT OPEN')).toBeNull();
+  });
+
+  it('stays open once this month has a photo', async () => {
+    const storage = require('@react-native-async-storage/async-storage');
+    await storage.setItem('minimalist-gym-tracker/photos/v1', JSON.stringify({ [today]: { date: today, uri: 'file:///p.jpg', mimeType: 'image/jpeg', size: 1 } }));
+    await renderWithApp(
+      <MonthlyPhotoGate>
+        <Text>WORKOUT OPEN</Text>
+      </MonthlyPhotoGate>,
+    );
+    await screen.findByText('WORKOUT OPEN');
+  });
+});

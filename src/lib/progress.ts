@@ -1,4 +1,4 @@
-import type { Ghost, HistoryEntry, SetPerf, SetRow, Session, Split, Unit } from '../types';
+import type { Exercise, Ghost, HistoryEntry, LoadKind, SetPerf, SetRow, Session, Split, Unit } from '../types';
 import { addDays, weekStartKey, weekdayIndex } from './dates';
 import { fmtWeight, fromDisplay, stepFor } from './units';
 
@@ -109,6 +109,20 @@ export function bestE1rmExcluding(sessions: Sessions, exerciseId: string, exclud
   return any ? best : null;
 }
 
+/** Most reps among logged sets with no added weight, ignoring one row. e1RM can't rank these: it is always 0. */
+export function bestRepsExcluding(sessions: Sessions, exerciseId: string, excludeRowId: string, excludeDate: string) {
+  let best = 0;
+  let any = false;
+  for (const [date, session] of Object.entries(sessions)) {
+    for (const r of session.exercises[exerciseId] ?? []) {
+      if (!isLogged(r) || isTimeSet(r) || r.weight > 0 || (date === excludeDate && r.id === excludeRowId)) continue;
+      any = true;
+      best = Math.max(best, r.reps);
+    }
+  }
+  return any ? best : null;
+}
+
 /** Longest hold (seconds) among logged time-based sets of an exercise, ignoring one row — the time-mode analog of `bestE1rmExcluding`. */
 export function bestDurationExcluding(sessions: Sessions, exerciseId: string, excludeRowId: string, excludeDate: string) {
   let best = 0;
@@ -151,12 +165,18 @@ export function ghostFor(index: number, rows: SetRow[], prev: SetPerf[] | undefi
   return { weight, reps };
 }
 
-/** What a tap on the checkmark will log: typed values, falling back to the grey ghost. */
+/** What a tap on the checkmark will log: typed values, falling back to the grey ghost. A blank kg box logs as no added weight. */
 export function resolveSet(row: SetRow, ghost: Ghost): SetPerf | null {
-  const weight = row.weight ?? ghost.weight;
   const reps = row.reps ?? ghost.reps;
-  return weight == null || reps == null || reps < 1 ? null : { weight, reps };
+  return reps == null || reps < 1 ? null : { weight: row.weight ?? ghost.weight ?? 0, reps };
 }
+
+/** Cardio has no kg box. Bodyweight moves keep one for extra weight, like a dip belt. */
+export const loadOf = (exercise: Pick<Exercise, 'group' | 'noWeight'> | null | undefined): LoadKind =>
+  exercise?.group === 'Cardio' ? 'none' : exercise?.noWeight ? 'extra' : 'kg';
+
+/** "60 × 8", or "8 reps" when no weight was added. */
+export const fmtSet = (s: SetPerf, unit: Unit) => (s.weight > 0 ? `${fmtWeight(s.weight, unit)} × ${s.reps}` : `${s.reps} reps`);
 
 /* ─────────────────────────── Progressive overload ─────────────────────────── */
 
@@ -188,6 +208,15 @@ export function suggestNext(prev: SetPerf[], unit: Unit, step: number = stepFor(
   const label = (w: number, r: number) => `${fmtWeight(w, unit)} ${unit} × ${r}`;
 
   const apply = (fn: (s: SetPerf) => SetPerf) => prev.map((s) => (s.weight === topW ? fn(s) : s));
+
+  if (topW === 0) {
+    return {
+      kind: 'reps',
+      sets: apply(() => ({ weight: 0, reps: maxReps + 1 })),
+      headline: `${maxReps + 1} reps`,
+      reason: `One more rep than your best set of ${maxReps}.`,
+    };
+  }
 
   if (minReps >= REP_CEILING) {
     return {

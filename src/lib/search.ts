@@ -8,7 +8,7 @@ const norm = (s: string) =>
     .trim();
 
 /**
- * Score tiers: 100 name prefix · 80 every token starts a word · 60 alias hit · 50 substring.
+ * Score tiers: 120 exact name · 100 name prefix · 80 every token starts a word · 60 alias hit · 50 substring.
  * `recency` (0 = most recent) nudges ties toward what you actually train.
  */
 export function scoreExercise(ex: Exercise, query: string, recency?: number): number {
@@ -24,7 +24,8 @@ export function scoreExercise(ex: Exercise, query: string, recency?: number): nu
 
   // Loose substring matching is only trustworthy once there's enough typed to mean something.
   let base = 0;
-  if (name.startsWith(q)) base = 100;
+  if (name === q) base = 120;
+  else if (name.startsWith(q)) base = 100;
   else if (startsAWord(name)) base = 80;
   else if (ex.aliases?.some((a) => norm(a).startsWith(q) || startsAWord(norm(a)))) base = 60;
   else if (q.length >= 3 && name.includes(q)) base = 50;
@@ -43,7 +44,8 @@ export function searchExercises(
   return all
     .map((ex) => ({ ex, score: scoreExercise(ex, query, recencyRank.get(ex.id)) }))
     .filter((r) => r.score > 0)
-    .sort((a, b) => b.score - a.score || a.ex.name.localeCompare(b.ex.name))
+    // Shorter names first: the plain lift before its many variations.
+    .sort((a, b) => b.score - a.score || a.ex.name.length - b.ex.name.length || a.ex.name.localeCompare(b.ex.name))
     .slice(0, limit)
     .map((r) => r.ex);
 }
