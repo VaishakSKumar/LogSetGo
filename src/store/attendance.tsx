@@ -3,11 +3,14 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 
 import { attendanceStats, resolveStatuses, STATUSES, type AttendanceStats, type Marks, type Status, type StatusMap } from '../lib/attendance';
 import { buildDemoAttendance, buildDemoData } from '../lib/demo';
+import { missedVisits, parseVisits, type Visit, type Visits } from '../lib/visits';
 import { useGym } from './gym';
 
 const STORAGE_KEY = 'minimalist-gym-tracker/attendance/v1';
-/** date → epoch ms of the punch-in. Kept apart from the marks, so backups and older data are untouched. */
+/** The older date → punch-in record. Read once, so a punch-in from before visits existed still counts. */
 const PUNCH_KEY = 'minimalist-gym-tracker/attendance/punches/v1';
+/** date → visit. Kept apart from the marks, so backups and older data are untouched. */
+const VISIT_KEY = 'minimalist-gym-tracker/attendance/visits/v1';
 
 interface AttendanceContextValue {
   ready: boolean;
@@ -18,6 +21,16 @@ interface AttendanceContextValue {
   stats: AttendanceStats;
   /** When today's Present was punched in (epoch ms), if it was punched in on this device. */
   punchedAt: number | undefined;
+  /** When today's visit was punched out, if it was. */
+  punchedOutAt: number | undefined;
+  /** The oldest earlier day still waiting for a leaving time. */
+  missed: { date: string; visit: Visit } | undefined;
+  punchOut(): void;
+  undoPunchOut(): void;
+  /** Saves roughly when you left a missed day. */
+  saveLeft(date: string, at: number): void;
+  /** You don't remember, so that day stays without a time. */
+  skipLeft(date: string): void;
   /** Set a date's status, or `null` to clear your mark. */
   setStatus(date: string, status: Status | null): void;
   /** Replaces every mark (used by backup import). */
@@ -50,7 +63,7 @@ function parseMarks(raw: string | null): Marks | null {
 export function AttendanceProvider({ children }: { children: ReactNode }) {
   const { data, realToday } = useGym();
   const [marks, setMarks] = useState<Marks>({});
-  const [punches, setPunches] = useState<Record<string, number>>({});
+  const [visits, setVisits] = useState<Visits>({});
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -65,15 +78,15 @@ export function AttendanceProvider({ children }: { children: ReactNode }) {
       if (!stored && process.env.EXPO_PUBLIC_DEMO === '1') {
         stored = buildDemoAttendance(realToday, buildDemoData(realToday).sessions);
       }
-      let storedPunches: Record<string, number> = {};
+      let storedVisits: Visits = {};
       try {
-        storedPunches = JSON.parse((await AsyncStorage.getItem(PUNCH_KEY)) ?? '{}');
+        storedVisits = parseVisits(await AsyncStorage.getItem(VISIT_KEY), await AsyncStorage.getItem(PUNCH_KEY));
       } catch {
-        storedPunches = {};
+        storedVisits = {};
       }
       if (cancelled) return;
       if (stored) setMarks(stored);
-      setPunches(storedPunches);
+      setVisits(storedVisits);
       setReady(true);
     })();
     return () => {
@@ -87,8 +100,9 @@ export function AttendanceProvider({ children }: { children: ReactNode }) {
   }, [marks, ready]);
 
   useEffect(() => {
-    if (ready) AsyncStorage.setItem(PUNCH_KEY, JSON.stringify(punches)).catch(() => {});
-  }, [punches, ready]);
+    if (ready) AsyncStorage.setItem(VISIT_KEY, JSON.stringify(visits)).catch(() => {});
+    if (ready) AsyncStorage.removeItem(PUNCH_KEY).catch(() => {});
+  }, [visits, ready]);
 
   const statuses = useMemo(() => resolveStatuses(marks, data.sessions), [marks, data.sessions]);
   const stats = useMemo(() => attendanceStats(statuses, realToday), [statuses, realToday]);
@@ -99,7 +113,18 @@ export function AttendanceProvider({ children }: { children: ReactNode }) {
       marks,
       statuses,
       stats,
-      punchedAt: punches[realToday],
+      punchedAt: visits[realToday]?.in,
+      punchedOutAt: visits[realToday]?.out,
+      missed: missedVisits(visits, statuses, realToday)[0],
+      punchOut: () => setVisits((v) => (v[realToday] ? { ...v, [realToday]: { ...v[realToday], out: Date.now() } } : v)),
+      undoPunchOut: () =>
+        setVisits((v) => {
+          if (!v[realToday]) return v;
+          const { out: _out, ...open } = v[realToday];
+          return { ...v, [realToday]: open };
+        }),
+      saveLeft: (date, at) => setVisits((v) => (v[date] ? { ...v, [date]: { ...v[date], out: at, approx: true } } : v)),
+      skipLeft: (date) => setVisits((v) => (v[date] ? { ...v, [date]: { ...v[date], noOut: true } } : v)),
       replaceMarks: (next) => setMarks(next),
       setStatus: (date, status) => {
         setMarks((m) => {
@@ -108,15 +133,16 @@ export function AttendanceProvider({ children }: { children: ReactNode }) {
           else delete next[date];
           return next;
         });
-        setPunches((p) => {
-          // Only today's Present is a punch-in; only the latest one matters.
-          if (status === 'present' && date === realToday) return p[date] ? p : { [date]: Date.now() };
-          if (status !== 'present' && p[date]) return {};
-          return p;
+        setVisits((v) => {
+          // Only today's Present is a punch-in.
+          if (status === 'present' && date === realToday) return v[date] ? v : { ...v, [date]: { in: Date.now() } };
+          if (status === 'present' || !v[date]) return v;
+          const { [date]: _gone, ...rest } = v;
+          return rest;
         });
       },
     }),
-    [ready, marks, statuses, stats, punches, realToday],
+    [ready, marks, statuses, stats, visits, realToday],
   );
 
   return <AttendanceContext.Provider value={value}>{children}</AttendanceContext.Provider>;

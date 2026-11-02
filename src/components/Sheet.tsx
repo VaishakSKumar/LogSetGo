@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -38,7 +38,7 @@ export function Sheet({ visible, onClose, title, children, display = false }: Sh
 
   return (
     <Modal transparent visible={mounted} animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Animated.View style={[{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: '#000' }, backdrop]}>
           <Pressable accessibilityLabel="Close" className="flex-1" onPress={onClose} />
         </Animated.View>
@@ -46,6 +46,7 @@ export function Sheet({ visible, onClose, title, children, display = false }: Sh
           style={[
             {
               maxHeight: height * 0.82,
+              flexShrink: 1,
               backgroundColor: colors.panel,
               borderTopColor: colors.border,
               borderTopWidth: 1,
@@ -84,7 +85,7 @@ export function SheetBody({ children }: { children: ReactNode }) {
   const { height } = useWindowDimensions();
   return (
     <ScrollView
-      style={{ maxHeight: height * 0.62 }}
+      style={{ maxHeight: height * 0.62, flexShrink: 1 }}
       contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 8 }}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}

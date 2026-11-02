@@ -77,7 +77,7 @@ export function BottomDrawer({ visible, onClose, children, footer, overlays, lab
 
   return (
     <Modal transparent visible={mounted} animationType="none" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end' }}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Animated.View style={[{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: '#000' }, backdrop]}>
           <Pressable accessibilityLabel="Dismiss" style={{ flex: 1 }} onPress={onClose} />
         </Animated.View>
@@ -87,6 +87,7 @@ export function BottomDrawer({ visible, onClose, children, footer, overlays, lab
           style={[
             {
               height,
+              flexShrink: 1,
               backgroundColor: colors.panel,
               borderTopColor: colors.border,
               borderTopWidth: 1,

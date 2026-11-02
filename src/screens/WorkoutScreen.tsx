@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DayStatusButtons } from '../components/attendance/DayStatusButtons';
@@ -248,7 +248,7 @@ export function WorkoutScreen() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-base">
+    <KeyboardAvoidingView behavior="padding" className="flex-1 bg-base">
       <ScrollView
         {...(hasLogged && canWrite ? null : swipe)}
         ref={scrollRef}

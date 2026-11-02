@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { FlatList, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { haptic } from '../../lib/haptics';
@@ -509,21 +509,23 @@ export function PlanFlow({ visible, onClose }: { visible: boolean; onClose: () =
 
   return (
     <Modal visible={visible} transparent={stage === 'choose'} animationType="slide" onRequestClose={back} statusBarTranslucent>
-      {stage === 'choose' ? <ChooseStage onPick={pick} onClose={onClose} /> : null}
-      {stage === 'info' ? <InfoStage way={way} onBack={back} onNext={leaveInfo} /> : null}
-      {stage === 'builder' ? <BuilderStage name={name} onName={setName} items={items} onItems={setItems} onAdd={() => setStage('picker')} onClose={onClose} onSave={saveBuilt} /> : null}
-      {stage === 'picker' ? (
-        <PickerStage
-          taken={taken}
-          onBack={() => setStage('builder')}
-          onPick={(exercise) => {
-            haptic.tap();
-            setItems((list) => [...list, { exercise, sets: DEFAULT_PLAN_SETS }]);
-            setStage('builder');
-          }}
-        />
-      ) : null}
-      {stage === 'import' ? <ImportStage review={review} onReview={setReview} onInfo={() => setStage('info')} onClose={onClose} onSave={saveImported} /> : null}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        {stage === 'choose' ? <ChooseStage onPick={pick} onClose={onClose} /> : null}
+        {stage === 'info' ? <InfoStage way={way} onBack={back} onNext={leaveInfo} /> : null}
+        {stage === 'builder' ? <BuilderStage name={name} onName={setName} items={items} onItems={setItems} onAdd={() => setStage('picker')} onClose={onClose} onSave={saveBuilt} /> : null}
+        {stage === 'picker' ? (
+          <PickerStage
+            taken={taken}
+            onBack={() => setStage('builder')}
+            onPick={(exercise) => {
+              haptic.tap();
+              setItems((list) => [...list, { exercise, sets: DEFAULT_PLAN_SETS }]);
+              setStage('builder');
+            }}
+          />
+        ) : null}
+        {stage === 'import' ? <ImportStage review={review} onReview={setReview} onInfo={() => setStage('info')} onClose={onClose} onSave={saveImported} /> : null}
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

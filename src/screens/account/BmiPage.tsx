@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { HeightSheet } from '../../components/body/HeightSheet';
 import { UpdateWeightSheet } from '../../components/body/UpdateWeightSheet';
@@ -69,7 +69,7 @@ export function BmiPage({ onBack, onWeightProgress }: { onBack: () => void; onWe
       : `BMI at goal: ${goalBmi.toFixed(1)}, ${goalBand!.label}`;
 
   return (
-    <View className="flex-1 bg-base">
+    <KeyboardAvoidingView behavior="padding" className="flex-1 bg-base">
       <PageHeader title="BMI" onBack={onBack} />
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: timer.status !== 'idle' ? 150 : 8, gap: 10 }}>
         <View accessibilityLabel="Your BMI" style={[card, { padding: 16 }]}>
@@ -155,6 +155,6 @@ export function BmiPage({ onBack, onWeightProgress }: { onBack: () => void; onWe
 
       <UpdateWeightSheet visible={weightOpen} onClose={() => setWeightOpen(false)} />
       <HeightSheet visible={heightOpen} onClose={() => setHeightOpen(false)} />
-    </View>
+    </KeyboardAvoidingView>
   );
 }

@@ -5,11 +5,13 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { AttendanceStatusSheet } from '../components/attendance/AttendanceStatusSheet';
 import { CalendarSheet } from '../components/attendance/CalendarSheet';
+import { MissedPunchOutSheet } from '../components/attendance/MissedPunchOutSheet';
 import { CalendarIcon, CheckIcon, ChevronRightIcon, CrossIcon, FingerprintIcon, SlidersIcon, SunIcon } from '../components/Icons';
 import { CAPSULE_COLORS, STATUS_META, type Status } from '../lib/attendance';
 import { dayMonthLong, dayMonthShort, weekdayLong } from '../lib/calendar';
 import { addDays, weekStartKey } from '../lib/dates';
 import { haptic } from '../lib/haptics';
+import { clockTime, spentTime } from '../lib/visits';
 import { useAttendance } from '../store/attendance';
 import { useGym } from '../store/gym';
 import { useNow, useTimer } from '../store/timer';
@@ -22,12 +24,6 @@ const WEEK_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MIN_CHECKIN_HEIGHT = 420;
 
 const pad = (n: number) => String(n).padStart(2, '0');
-
-const clockTime = (ms: number) => {
-  const d = new Date(ms);
-  const hour = d.getHours() % 12 || 12;
-  return `${hour}:${pad(d.getMinutes())} ${d.getHours() < 12 ? 'am' : 'pm'}`;
-};
 
 const elapsedTime = (seconds: number) => {
   const m = Math.floor(seconds / 60);
@@ -81,7 +77,7 @@ function PunchButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-function Panel({ tint, border, children }: { tint: string; border: string; children: ReactNode }) {
+function Panel({ tint, border, tight = false, children }: { tint: string; border: string; tight?: boolean; children: ReactNode }) {
   return (
     <View
       style={{
@@ -90,10 +86,12 @@ function Panel({ tint, border, children }: { tint: string; border: string; child
         right: 0,
         bottom: 6,
         left: 0,
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingTop: tight ? 12 : 16,
+        paddingBottom: tight ? 4 : 16,
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
+        gap: tight ? 4 : 6,
         borderRadius: 20,
         borderWidth: 1.5,
         borderColor: border,
@@ -105,18 +103,18 @@ function Panel({ tint, border, children }: { tint: string; border: string; child
   );
 }
 
-const Undo = ({ label, onPress }: { label: string; onPress: () => void }) => (
-  <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} className="justify-center active:opacity-60" style={{ height: 44, marginTop: 4, paddingHorizontal: 12 }}>
+const Undo = ({ label, onPress, flush = false }: { label: string; onPress: () => void; flush?: boolean }) => (
+  <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} className="justify-center active:opacity-60" style={{ height: 44, marginTop: flush ? 0 : 4, paddingHorizontal: 12 }}>
     <Text style={{ color: '#fff', fontFamily: fonts.semibold, fontSize: 14, textDecorationLine: 'underline' }}>{label}</Text>
   </Pressable>
 );
 
-function PunchedPanel({ at, onUndo }: { at: number; onUndo: (() => void) | null }) {
+function PunchedPanel({ at, onOut, onUndo }: { at: number; onOut: () => void; onUndo: (() => void) | null }) {
   const now = useNow(true, 1000);
   return (
-    <Panel tint={colors.accentPanel} border={colors.accent}>
-      <View className="items-center justify-center" style={{ width: 56, height: 56, marginBottom: 10, borderRadius: 28, backgroundColor: colors.accent }}>
-        <CheckIcon size={30} color="#000" stroke={2.8} />
+    <Panel tint={colors.accentPanel} border={colors.accent} tight>
+      <View className="items-center justify-center" style={{ width: 44, height: 44, marginBottom: 6, borderRadius: 22, backgroundColor: colors.accent }}>
+        <CheckIcon size={24} color="#000" stroke={2.8} />
       </View>
       <Text style={{ color: '#fff', fontFamily: fonts.semibold, fontSize: 16, lineHeight: 24 }}>Punched in at {clockTime(at)}</Text>
       <Text style={{ color: colors.secondary, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 }}>Workout time</Text>
@@ -124,11 +122,39 @@ function PunchedPanel({ at, onUndo }: { at: number; onUndo: (() => void) | null 
         numberOfLines={1}
         adjustsFontSizeToFit
         accessibilityRole="timer"
-        style={{ color: colors.accent, fontFamily: fonts.display, fontSize: 88, lineHeight: 92, fontVariant: ['tabular-nums'] }}
+        style={{ color: colors.accent, fontFamily: fonts.display, fontSize: 76, lineHeight: 80, fontVariant: ['tabular-nums'] }}
       >
         {elapsedTime(Math.max(0, Math.floor((now - at) / 1000)))}
       </Text>
-      {onUndo ? <Undo label="Undo punch-in" onPress={onUndo} /> : null}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Punch Out"
+        onPress={onOut}
+        className="w-full flex-row items-center justify-center active:opacity-80"
+        style={{ height: 56, marginTop: 6, gap: 10, borderRadius: 14, backgroundColor: '#fff' }}
+      >
+        <View style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: '#000' }} />
+        <Text style={{ color: '#000', fontFamily: fonts.display, fontSize: 26, textTransform: 'uppercase' }}>Punch Out</Text>
+      </Pressable>
+      {onUndo ? <Undo label="Undo punch-in" onPress={onUndo} flush /> : null}
+    </Panel>
+  );
+}
+
+function PunchedOutPanel({ at, out, onUndo }: { at: number; out: number; onUndo: () => void }) {
+  return (
+    <Panel tint={colors.panel} border={colors.border}>
+      <View className="items-center justify-center" style={{ width: 56, height: 56, marginBottom: 10, borderRadius: 28, backgroundColor: colors.fill }}>
+        <CheckIcon size={30} color={colors.accent} stroke={2.8} />
+      </View>
+      <Text style={{ color: colors.secondary, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 }}>Time in the gym</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#fff', fontFamily: fonts.display, fontSize: 88, lineHeight: 92, fontVariant: ['tabular-nums'] }}>
+        {elapsedTime(Math.max(0, Math.floor((out - at) / 1000)))}
+      </Text>
+      <Text style={{ color: '#fff', fontFamily: fonts.semibold, fontSize: 16, lineHeight: 24 }}>
+        {clockTime(at)} to {clockTime(out)}
+      </Text>
+      <Undo label="Undo punch-out" onPress={onUndo} />
     </Panel>
   );
 }
@@ -186,12 +212,13 @@ function WeekTile({ date, label, today, status, onPress }: { date: string; label
 /** Home screen: today's check-in, this week's attendance, and the calendar popup. */
 export function CalendarScreen({ onOpenWorkout, onSettings }: Props) {
   const { realToday } = useGym();
-  const { marks, statuses, stats, punchedAt, setStatus } = useAttendance();
+  const { marks, statuses, stats, punchedAt, punchedOutAt, missed, punchOut, undoPunchOut, saveLeft, skipLeft, setStatus } = useAttendance();
   const { timer } = useTimer();
   const insets = useSafeAreaInsets();
 
   const [punchOpen, setPunchOpen] = useState(false);
   const [calendarDate, setCalendarDate] = useState<string | null>(null);
+  const [savedVisit, setSavedVisit] = useState<string | null>(null);
 
   const status = statuses[realToday];
   const start = weekStartKey(realToday);
@@ -262,6 +289,15 @@ export function CalendarScreen({ onOpenWorkout, onSettings }: Props) {
             </View>
           </View>
 
+          {savedVisit ? (
+            <View accessibilityLiveRegion="polite" className="flex-row items-center" style={{ minHeight: 44, paddingHorizontal: 12, paddingVertical: 6, gap: 8, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.chip }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent }} />
+              <Text className="flex-1" style={{ color: '#fff', fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 }}>
+                {savedVisit}
+              </Text>
+            </View>
+          ) : null}
+
           <View className="flex-1">
             {!status ? (
               <PunchButton
@@ -270,8 +306,24 @@ export function CalendarScreen({ onOpenWorkout, onSettings }: Props) {
                   setPunchOpen(true);
                 }}
               />
+            ) : status === 'present' && punchedAt && punchedOutAt ? (
+              <PunchedOutPanel
+                at={punchedAt}
+                out={punchedOutAt}
+                onUndo={() => {
+                  haptic.tap();
+                  undoPunchOut();
+                }}
+              />
             ) : status === 'present' && punchedAt ? (
-              <PunchedPanel at={punchedAt} onUndo={undo} />
+              <PunchedPanel
+                at={punchedAt}
+                onOut={() => {
+                  haptic.pulse();
+                  punchOut();
+                }}
+                onUndo={undo}
+              />
             ) : (
               <MarkedPanel status={status} onUndo={undo} />
             )}
@@ -279,7 +331,7 @@ export function CalendarScreen({ onOpenWorkout, onSettings }: Props) {
 
           {status ? (
             <Text accessibilityLiveRegion="polite" style={{ color: colors.muted, fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, textAlign: 'center' }}>
-              {status === 'present' ? 'Today is marked Present.' : 'Undo to punch in instead.'}
+              {status === 'present' ? (punchedOutAt ? 'You can still log sets today.' : 'Today is marked Present.') : 'Undo to punch in instead.'}
             </Text>
           ) : (
             <View className="flex-row" style={{ gap: 8 }}>
@@ -313,6 +365,23 @@ export function CalendarScreen({ onOpenWorkout, onSettings }: Props) {
           </View>
         </View>
       </ScrollView>
+
+      {missed ? (
+        <MissedPunchOutSheet
+          date={missed.date}
+          visit={missed.visit}
+          today={realToday}
+          onSave={(at) => {
+            haptic.tap();
+            saveLeft(missed.date, at);
+            setSavedVisit(`Saved: ${spentTime(missed.visit.in, at)} in the gym ${missed.date === addDays(realToday, -1) ? 'yesterday' : `on ${dayMonthShort(missed.date)}`}.`);
+          }}
+          onSkip={() => {
+            haptic.tap();
+            skipLeft(missed.date);
+          }}
+        />
+      ) : null}
 
       <AttendanceStatusSheet visible={punchOpen} onSelect={punch} onClose={() => setPunchOpen(false)} />
       <CalendarSheet visible={calendarDate != null} date={calendarDate ?? realToday} onClose={() => setCalendarDate(null)} />

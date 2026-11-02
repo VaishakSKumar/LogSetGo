@@ -377,6 +377,25 @@ Change colours depend on the effect, not the direction: toward Healthy is green,
 | WEIGHT-2 | 1 month, 3 months, All | Chart and tiles change. Tapping a point updates the readout. |
 | WEIGHT-3 | Set a goal | Dashed goal line, inside the chart scale |
 
+### Punch out
+
+| ID | Test | Expected |
+|---|---|---|
+| OUT-1 | Punch in, tap Punch Out | Timer freezes. Day stays Present and sets can still be logged. |
+| OUT-2 | Tap Undo punch-out | Timer runs again from the original punch-in |
+| OUT-3 | Punch in and leave it past midnight, open the app | "You didn't punch out" asks when you left |
+| OUT-4 | Move the time to each limit | − stops 15 minutes after punch-in, + stops at 11:59 pm |
+| OUT-5 | Save time | "Saved: h:mm in the gym yesterday" and the sheet closes |
+| OUT-6 | I don't remember | Sheet closes, no time saved, not asked again |
+| OUT-7 | Close the app without answering, reopen | Asks again |
+| OUT-8 | Two missed days | Asks about each, oldest first |
+
+### Keyboard
+
+| ID | Test | Expected |
+|---|---|---|
+| KEY-1 | Tap any field: sets, weight, goal, plan name, search, notes | The field and what you type stay above the keyboard |
+
 ### New workout plan
 
 The + beside the day name opens it. Saving a plan logs nothing.
