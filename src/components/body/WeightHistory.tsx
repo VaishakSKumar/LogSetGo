@@ -7,10 +7,9 @@ import { haptic } from '../../lib/haptics';
 import { fmtDelta, fmtWeight, toDisplay } from '../../lib/units';
 import { useBody } from '../../store/body';
 import { useGym } from '../../store/gym';
-import { colors } from '../../theme';
+import { colors, toneColor } from '../../theme';
 import { CloseIcon } from '../Icons';
 import { Caption, Card, Num, PillButton } from '../ui';
-import { toneColor } from './HeroCard';
 
 const PAGE = 10;
 

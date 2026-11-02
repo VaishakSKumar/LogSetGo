@@ -9,7 +9,7 @@ import { ghostSuffix, searchExercises, shouldOfferCreate, tidyName } from '../li
 import { browseExercises } from '../lib/suggest';
 import { fmtWeight } from '../lib/units';
 import { useGym } from '../store/gym';
-import { colors, motion } from '../theme';
+import { colors, fonts, motion } from '../theme';
 import type { Equipment, Exercise, MuscleGroup } from '../types';
 import { CloseIcon, PlusIcon, SearchIcon } from './Icons';
 
@@ -20,7 +20,7 @@ const EQUIPMENT: Equipment[] = ['Barbell', 'Dumbbell', 'Machine', 'Cable', 'Body
 /** How many rows a typed search or an equipment filter lists at once. */
 const LIST_LIMIT = 30;
 
-const INPUT_FONT = { fontSize: 17, letterSpacing: -0.2, fontWeight: '400' } as const;
+const INPUT_FONT = { fontSize: 17, fontFamily: fonts.medium } as const;
 
 interface Props {
   open: boolean;
@@ -39,7 +39,7 @@ function Name({ name, query }: { name: string; query: string }) {
   const hit = q && name.toLowerCase().startsWith(q.toLowerCase()) ? q.length : 0;
   return (
     <Text className="text-h2 font-normal text-label" numberOfLines={1}>
-      {hit > 0 ? <Text style={{ fontWeight: '700' }}>{name.slice(0, hit)}</Text> : null}
+      {hit > 0 ? <Text style={{ fontFamily: fonts.bold }}>{name.slice(0, hit)}</Text> : null}
       {name.slice(hit)}
     </Text>
   );
@@ -47,6 +47,7 @@ function Name({ name, query }: { name: string; query: string }) {
 
 export function ExerciseSearch({ open, onOpenChange, hero = false, showSelected = true, variant = 'default' }: Props) {
   const { exercises, recents, history, active, label, today, data, actions } = useGym();
+  const fieldHeight = hero ? 60 : 48;
   const [query, setQuery] = useState('');
   const inputRef = useRef<TextInput>(null);
   /** name waiting for a muscle group (custom exercise being created) */
@@ -159,15 +160,19 @@ export function ExerciseSearch({ open, onOpenChange, hero = false, showSelected 
     <View>
       <View className="flex-row items-center gap-3">
         <View
-          className="h-12 flex-1 flex-row items-center rounded-full border border-line bg-surface pl-4"
+          className="flex-1 flex-row items-center"
           style={{
-            borderColor: open ? 'rgba(255,255,255,0.25)' : colors.line,
-            backgroundColor: variant === 'sheet' ? colors.fill : colors.surface,
+            height: fieldHeight,
+            paddingLeft: 14,
+            borderRadius: 14,
+            borderWidth: variant === 'sheet' ? 0 : 1.5,
+            borderColor: open ? colors.accentBorder : colors.border,
+            backgroundColor: variant === 'sheet' ? colors.fill : colors.panel,
             paddingRight: shownText.length > 0 ? 44 : 16,
           }}
         >
-          <SearchIcon />
-          <View className="ml-3 h-12 flex-1 justify-center">
+          <SearchIcon size={22} color="#fff" stroke={2.2} />
+          <View className="ml-3 flex-1 justify-center" style={{ height: fieldHeight }}>
             {open && ghost ? (
               <View pointerEvents="none" className="absolute inset-0 justify-center" style={{ top: 0, bottom: 0, left: 0, right: 0 }}>
                 <Text numberOfLines={1} style={INPUT_FONT}>
@@ -182,14 +187,14 @@ export function ExerciseSearch({ open, onOpenChange, hero = false, showSelected 
               onChangeText={setQuery}
               onFocus={() => onOpenChange(true)}
               onSubmitEditing={submit}
-              placeholder={open ? 'Search exercises' : hero ? 'Type an exercise, e.g. Bench Press' : 'Choose an exercise'}
+              placeholder="Search exercises"
               placeholderTextColor={colors.ghost}
               autoCapitalize="words"
               autoCorrect={false}
               returnKeyType="done"
               selectionColor={colors.accent}
               accessibilityLabel="Exercise search"
-              style={[INPUT_FONT, { height: 48, padding: 0, color: colors.label, outlineStyle: 'none' } as never]}
+              style={[INPUT_FONT, { height: fieldHeight, padding: 0, color: colors.label, outlineStyle: 'none' } as never]}
             />
           </View>
           {shownText.length > 0 ? (
@@ -217,10 +222,10 @@ export function ExerciseSearch({ open, onOpenChange, hero = false, showSelected 
           style={{
             marginTop: 12,
             overflow: 'hidden',
-            borderRadius: 24,
+            borderRadius: 18,
             borderWidth: 1,
             borderColor: colors.line,
-            backgroundColor: colors.surface,
+            backgroundColor: colors.panel,
             paddingBottom: 4,
           }}
         >

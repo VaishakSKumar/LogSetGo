@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
 
 import type { MonthlyPhoto } from '../types';
-import { extensionOf, photoError, photoMime } from './photoCheck';
+import { BROKEN_PHOTO, extensionOf, isImageBytes, photoError, photoMime } from './photoCheck';
 
 const STORAGE_KEY = 'minimalist-gym-tracker/photos/v1';
 const WEB_DB = 'logsetgo-photos';
@@ -56,7 +56,10 @@ export async function chooseFile(): Promise<PhotoPick> {
     const res = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true, multiple: false });
     const asset = res.assets?.[0];
     if (res.canceled || !asset) return { ok: false, cancelled: true };
-    return checked({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType ?? null, size: sizeOf(asset.uri, asset.size) });
+    const result = checked({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType ?? null, size: sizeOf(asset.uri, asset.size) });
+    if (!result.ok) return result;
+    const bytes = Platform.OS === 'web' ? new Uint8Array(await (await fetch(asset.uri)).arrayBuffer()) : await new File(asset.uri).bytes();
+    return isImageBytes(bytes) ? result : { ok: false, cancelled: false, error: BROKEN_PHOTO };
   } catch (e) {
     return { ok: false, cancelled: false, error: e instanceof Error ? e.message : 'Couldn’t read that file.' };
   }
@@ -79,10 +82,44 @@ function saveNative(picked: PickedPhoto, date: string) {
   const dir = new Directory(Paths.document, 'monthly-photos');
   dir.create({ idempotent: true, intermediates: true });
   const extension = extensionOf(picked.name) || 'jpg';
-  const dest = new File(dir, `${date}.${extension}`);
+  // A fresh name each time, or a replaced photo would keep showing from the image cache.
+  const dest = new File(dir, `${date}-${Date.now()}.${extension}`);
   if (dest.exists) dest.delete();
   new File(picked.uri).copy(dest);
   return dest.uri;
+}
+
+/** One image per exercise, picked by you as its form demo. */
+const FORM_KEY = 'minimalist-gym-tracker/form-images/v1';
+
+export async function loadFormImages(): Promise<Record<string, MonthlyPhoto>> {
+  try {
+    return JSON.parse((await AsyncStorage.getItem(FORM_KEY)) ?? '{}') as Record<string, MonthlyPhoto>;
+  } catch {
+    return {};
+  }
+}
+
+const formKey = (exerciseId: string) => `form-${exerciseId.replace(/[^\w-]/g, '_')}`;
+
+export async function saveFormImage(picked: PickedPhoto, exerciseId: string): Promise<MonthlyPhoto> {
+  const date = formKey(exerciseId);
+  let uri: string;
+  if (Platform.OS === 'web') {
+    const blob = await (await fetch(picked.uri)).blob();
+    await webRequest('readwrite', (store) => store.put(blob, date));
+    uri = `${WEB_PREFIX}${date}`;
+  } else {
+    uri = saveNative(picked, date);
+  }
+  const image: MonthlyPhoto = { date, uri, mimeType: photoMime(picked.name, picked.mimeType) ?? 'image/jpeg', size: picked.size ?? 0 };
+  await AsyncStorage.setItem(FORM_KEY, JSON.stringify({ ...(await loadFormImages()), [exerciseId]: image }));
+  return image;
+}
+
+export async function removeFormImage(exerciseId: string) {
+  const { [exerciseId]: _removed, ...rest } = await loadFormImages();
+  await AsyncStorage.setItem(FORM_KEY, JSON.stringify(rest));
 }
 
 export async function loadPhotos(): Promise<Record<string, MonthlyPhoto>> {
@@ -105,7 +142,20 @@ export async function savePhoto(picked: PickedPhoto, date: string): Promise<Mont
     uri = saveNative(picked, date);
   }
   const photo: MonthlyPhoto = { date, uri, mimeType: photoMime(picked.name, picked.mimeType) ?? 'image/jpeg', size: picked.size ?? 0 };
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...(await loadPhotos()), [date]: photo }));
+  // One photo per month: saving again replaces that month's photo.
+  const stored = await loadPhotos();
+  const kept = Object.fromEntries(Object.entries(stored).filter(([d]) => d.slice(0, 7) !== date.slice(0, 7)));
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...kept, [date]: photo }));
+  if (Platform.OS !== 'web') {
+    for (const [d, old] of Object.entries(stored)) {
+      if (d.slice(0, 7) !== date.slice(0, 7) || old.uri === uri) continue;
+      try {
+        new File(old.uri).delete();
+      } catch {
+        // The old file may already be gone; the record is what matters.
+      }
+    }
+  }
   return photo;
 }
 

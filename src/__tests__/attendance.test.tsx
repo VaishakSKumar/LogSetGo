@@ -1,47 +1,60 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 
-import { longDate } from '../lib/calendar';
-import { dateKey } from '../lib/dates';
 import { CalendarScreen } from '../screens/CalendarScreen';
 import { renderWithApp } from './helpers';
 
-const today = dateKey();
-// The trailing boundary stops "November 1" also matching "November 15".
-const tile = () => screen.getByLabelText(new RegExp(`^${longDate(today)}[,.]`));
+const noop = () => {};
 
-describe('Attendance flow', () => {
-  it('Absent marks the date and stays on the calendar; Present routes to the workout', async () => {
+const openCalendar = async () => {
+  await fireEvent.press(await screen.findByLabelText('Open attendance calendar'));
+  await screen.findByLabelText('Attendance calendar');
+};
+
+describe('Attendance dashboard', () => {
+  it('marks Absent in one tap, shows it, and Undo brings the punch button back', async () => {
     const onOpenWorkout = jest.fn();
-    await renderWithApp(<CalendarScreen onOpenWorkout={onOpenWorkout} />);
+    await renderWithApp(<CalendarScreen onOpenWorkout={onOpenWorkout} onSettings={noop} />);
 
-    // The calendar is the landing screen, with the analytics header.
-    await waitFor(() => expect(screen.getByText('Showed up')).toBeTruthy());
-    expect(tile().props.accessibilityLabel).toContain('Not logged');
+    await fireEvent.press(await screen.findByLabelText('Absent'));
+    await screen.findByText('Streak back to 0');
+    expect(screen.getByText('Undo to punch in instead.')).toBeTruthy();
+    expect(onOpenWorkout).not.toHaveBeenCalled();
 
-    // Tap today → choose Absent.
-    await fireEvent.press(tile());
-    await fireEvent.press(await screen.findByLabelText(/^Absent\./));
-    await waitFor(() => expect(tile().props.accessibilityLabel).toContain('Absent'));
-    expect(onOpenWorkout).not.toHaveBeenCalled(); // stays put
-
-    // Absent counts against the rate: 0 of 1 days.
-    expect(screen.getByText('0 of 1 days')).toBeTruthy();
-
-    // Change your mind: tap again → Present → routed to the logger for that date.
-    await fireEvent.press(tile());
-    await fireEvent.press(await screen.findByLabelText(/^Present\./));
-    await waitFor(() => expect(onOpenWorkout).toHaveBeenCalledWith(today));
-    await waitFor(() => expect(tile().props.accessibilityLabel).toContain('Present'));
+    await fireEvent.press(screen.getByLabelText('Undo'));
+    await screen.findByLabelText('Punch In / Start Workout');
   });
 
-  it('Holiday is excused: it neither counts as a day shown up nor lowers the rate', async () => {
-    await renderWithApp(<CalendarScreen onOpenWorkout={jest.fn()} />);
-    await waitFor(() => expect(screen.getByText('Showed up')).toBeTruthy());
+  it('Holiday keeps the streak, and Settings opens from the header', async () => {
+    const onSettings = jest.fn();
+    await renderWithApp(<CalendarScreen onOpenWorkout={noop} onSettings={onSettings} />);
 
-    await fireEvent.press(tile());
-    await fireEvent.press(await screen.findByLabelText(/^Holiday\./));
-    await waitFor(() => expect(tile().props.accessibilityLabel).toContain('Holiday'));
-    expect(screen.getByText('0 of 0 days')).toBeTruthy();
-    expect(screen.getByText('—')).toBeTruthy(); // no rate yet
+    await fireEvent.press(await screen.findByLabelText('Holiday'));
+    await screen.findByText('Planned rest, streak kept');
+
+    await fireEvent.press(screen.getByLabelText('Settings'));
+    expect(onSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('the calendar popup sets today, and tapping the selected status clears it', async () => {
+    await renderWithApp(<CalendarScreen onOpenWorkout={noop} onSettings={noop} />);
+    await openCalendar();
+
+    const sheetButton = (label: string) => screen.getAllByLabelText(label).at(-1)!;
+    await fireEvent.press(sheetButton('Absent'));
+    await screen.findByText('Streak back to 0');
+
+    await fireEvent.press(sheetButton('Absent'));
+    await waitFor(() => expect(screen.queryByText('Streak back to 0')).toBeNull());
+  });
+
+  it('switches between the weekly dial and the monthly grid', async () => {
+    await renderWithApp(<CalendarScreen onOpenWorkout={noop} onSettings={noop} />);
+    await openCalendar();
+
+    expect(screen.queryByLabelText('Previous month')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Monthly'));
+    expect(screen.getByLabelText('Previous month')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Weekly'));
+    expect(screen.queryByLabelText('Previous month')).toBeNull();
   });
 });

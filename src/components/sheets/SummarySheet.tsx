@@ -8,7 +8,7 @@ import { routineFromSession, routineIdFor } from '../../lib/routines';
 import { workoutSummary } from '../../lib/stats';
 import { fmtVolume, fmtWeight } from '../../lib/units';
 import { useGym } from '../../store/gym';
-import { colors } from '../../theme';
+import { colors, fonts } from '../../theme';
 import { Sheet, SheetBody } from '../Sheet';
 import { Caption, Num, PillButton } from '../ui';
 
@@ -71,7 +71,7 @@ export function SummarySheet({ visible, onClose }: { visible: boolean; onClose: 
             {summary.vsLast ? (
               <Text className="mt-3 text-body text-muted">
                 vs your last {summary.label} on {shortDate(summary.vsLast.date)}:{' '}
-                <Text style={{ color: summary.vsLast.pct > 0 ? colors.accent : colors.muted, fontWeight: '600' }}>
+                <Text style={{ color: summary.vsLast.pct > 0 ? colors.accent : colors.muted, fontFamily: fonts.semibold }}>
                   {summary.vsLast.pct > 0 ? '+' : summary.vsLast.pct < 0 ? '−' : ''}
                   {Math.abs(summary.vsLast.pct)}% volume
                 </Text>

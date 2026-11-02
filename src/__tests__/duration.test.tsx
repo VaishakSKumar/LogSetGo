@@ -57,7 +57,7 @@ describe('Time-based sets', () => {
   it('the ± stepper moves in 5-second jumps and shows MM:SS, not a raw number', async () => {
     await renderWithApp(<WithPlank />);
     await screen.findByLabelText('Time mode');
-    for (let i = 0; i < 9; i++) await press('Increase Time'); // 9 × 5s = 45s
+    for (let i = 0; i < 9; i++) await press('Increase time'); // 9 × 5s = 45s
     expect(screen.getAllByText('0:45').length).toBeGreaterThan(0);
     await press(/^Log set 1/);
     await screen.findByLabelText('Undo set 1');

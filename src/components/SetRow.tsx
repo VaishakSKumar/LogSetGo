@@ -14,16 +14,15 @@ import { formatDuration, parseDurationInput } from '../lib/duration';
 import { haptic } from '../lib/haptics';
 import { fmtSet, resolveSet } from '../lib/progress';
 import { fmtDelta, fromDisplay, roundDisplay, toDisplay } from '../lib/units';
-import { colors, motion, roundedFont } from '../theme';
+import { colors, fonts, motion } from '../theme';
 import type { Ghost, LoadKind, SetMode, SetPerf, SetRow as SetRowData, Unit } from '../types';
 import { CheckIcon } from './Icons';
 
 /* ─────────────── Column widths shared with the table header ─────────────── */
 
 export const COL = {
-  set: 'w-7',
-  previous: 'w-20',
-  reps: 'w-[68px]',
+  set: 'w-[26px]',
+  previous: 'w-[62px]',
   check: 'w-11',
 } as const;
 
@@ -114,8 +113,8 @@ function NumberCell({ value, ghost, locked, kind, label, onCommit }: NumberCellP
         accessibilityLabel={label}
         placeholderTextColor={colors.ghost}
         placeholder={shown != null ? (kind === 'duration' ? format(shown) : String(shown)) : kind === 'duration' ? '0:00' : '0'}
-        className="h-11 rounded-xl border border-white/25 bg-fill px-2 text-right text-num tabular-nums text-label"
-        style={{ fontFamily: roundedFont, outlineStyle: 'none' } as never}
+        className="h-10 rounded-[10px] border border-white/25 bg-fill px-1 text-center text-num tabular-nums text-label"
+        style={{ outlineStyle: 'none' } as never}
       />
     );
   }
@@ -126,11 +125,11 @@ function NumberCell({ value, ghost, locked, kind, label, onCommit }: NumberCellP
       accessibilityLabel={`${label}: ${shown == null ? 'empty' : kind === 'duration' ? format(shown) : shown}${isGhost ? ', suggested, tap to accept' : ''}`}
       disabled={locked}
       onPress={begin}
-      className={`h-11 justify-center rounded-xl px-2 active:opacity-70 ${locked ? '' : 'bg-fill/70'}`}
+      className="h-10 justify-center px-1 active:opacity-70"
     >
       <Text
-        className="text-right text-num tabular-nums"
-        style={{ fontFamily: roundedFont, color: isGhost ? colors.ghost : shown == null || noWeight ? colors.outline : colors.label }}
+        className="text-center text-num tabular-nums"
+        style={{ color: isGhost ? colors.ghost : shown == null || noWeight ? colors.outline : colors.label }}
       >
         {shown == null || noWeight ? '–' : kind === 'duration' ? format(shown) : shown}
       </Text>
@@ -140,7 +139,7 @@ function NumberCell({ value, ghost, locked, kind, label, onCommit }: NumberCellP
 
 /* ─────────────── Check button ─────────────── */
 
-function CheckButton({ done, ready, active, label, onPress }: { done: boolean; ready: boolean; active: boolean; label: string; onPress: () => void }) {
+function CheckButton({ done, active, label, onPress }: { done: boolean; active: boolean; label: string; onPress: () => void }) {
   const scale = useSharedValue(1);
   const first = useRef(true);
 
@@ -153,17 +152,17 @@ function CheckButton({ done, ready, active, label, onPress }: { done: boolean; r
   }, [done, scale]);
 
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const ring = done ? colors.accent : ready ? (active ? colors.accent : colors.muted) : colors.outline;
+  const ring = done || active ? colors.accent : '#5A5D5A';
 
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} className={`${COL.check} h-11 items-center justify-center`}>
       <Animated.View
         style={[
           {
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            borderWidth: 1.5,
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            borderWidth: done ? 0 : 2,
             alignItems: 'center',
             justifyContent: 'center',
             borderColor: ring,
@@ -172,7 +171,7 @@ function CheckButton({ done, ready, active, label, onPress }: { done: boolean; r
           style,
         ]}
       >
-        <CheckIcon size={16} color={done ? '#000' : ready ? ring : colors.outline} stroke={done ? 3.2 : 2.6} />
+        {done ? <CheckIcon size={16} color="#000" stroke={3.2} /> : null}
       </Animated.View>
     </Pressable>
   );
@@ -255,13 +254,17 @@ function SetRowView({ index, row, prev, ghost, unit, active, load = 'kg', onChan
     <Animated.View entering={FadeIn.duration(motion.duration)} layout={LinearTransition.duration(motion.duration)} style={wrap}>
       <Animated.View
         pointerEvents="none"
-        style={[{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, borderRadius: 18, backgroundColor: colors.accent }, glowStyle]}
+        style={[{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, borderRadius: 12, backgroundColor: colors.accent }, glowStyle]}
       />
       <View
-        className="h-14 flex-row items-center rounded-2xl border px-2"
+        className="flex-row items-center"
         style={{
-          backgroundColor: done ? 'rgba(58,58,60,0.55)' : colors.glass,
-          borderColor: active && !done ? colors.accentBorder : colors.glassBorder,
+          height: 48,
+          paddingHorizontal: 6,
+          borderRadius: 12,
+          borderWidth: 1,
+          backgroundColor: active && !done ? colors.raised : 'transparent',
+          borderColor: active && !done ? colors.accent : 'transparent',
         }}
       >
         <Pressable
@@ -274,14 +277,14 @@ function SetRowView({ index, row, prev, ghost, unit, active, load = 'kg', onChan
           hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
           className={`${COL.set} h-11 justify-center active:opacity-60`}
         >
-          <Text className="text-body tabular-nums" style={{ color: row.warmup ? colors.warn : active && !done ? colors.accent : colors.muted, fontWeight: active && !done ? '700' : '500' }}>
+          <Text className="text-body tabular-nums" style={{ color: row.warmup ? colors.warn : colors.secondary, fontFamily: fonts.semibold }}>
             {row.warmup ? 'W' : index + 1}
           </Text>
           {row.rpe || row.note ? <View style={{ position: 'absolute', top: 6, right: 2, width: 5, height: 5, borderRadius: 3, backgroundColor: colors.muted }} /> : null}
         </Pressable>
 
         <View className={`${COL.previous} justify-center`}>
-          <Text className="text-body tabular-nums text-muted/70" numberOfLines={1}>
+          <Text className="text-meta tabular-nums text-muted" numberOfLines={1}>
             {prev ? (mode === 'time' ? formatDuration(prev.reps) : fmtSet(prev, unit)) : '—'}
           </Text>
           {delta ? (
@@ -304,7 +307,7 @@ function SetRowView({ index, row, prev, ghost, unit, active, load = 'kg', onChan
           </View>
         )}
 
-        <View className={load === 'none' ? 'flex-1' : `${COL.reps} ml-2`}>
+        <View className="flex-1">
           <NumberCell
             label={`Set ${index + 1} ${mode === 'time' ? 'duration' : 'reps'}`}
             value={row.reps}
@@ -317,7 +320,6 @@ function SetRowView({ index, row, prev, ghost, unit, active, load = 'kg', onChan
 
         <CheckButton
           done={done}
-          ready={!!resolved}
           active={active}
           label={done ? `Undo set ${index + 1}` : `Log set ${index + 1}`}
           onPress={press}

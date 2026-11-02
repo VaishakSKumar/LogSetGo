@@ -24,9 +24,29 @@ export function photoError(name: string, mimeType: string | null | undefined, si
   return null;
 }
 
+const startsWith = (bytes: Uint8Array, start: number[], at = 0) => start.every((b, i) => bytes[at + i] === b);
+
+/** A renamed or damaged file can pass the name and type checks, so look at how it really starts. */
+export function isImageBytes(bytes: Uint8Array) {
+  return (
+    startsWith(bytes, [0xff, 0xd8, 0xff]) || // JPG
+    startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) || // PNG
+    startsWith(bytes, [0x47, 0x49, 0x46, 0x38]) || // GIF
+    (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes, [0x57, 0x45, 0x42, 0x50], 8)) // WebP
+  );
+}
+
+export const BROKEN_PHOTO = 'That image can’t be opened. It may be damaged. Try another one.';
+
 /** Photo check-ins are due once per calendar month. */
 export const needsMonthlyPhoto = (photos: Record<string, MonthlyPhoto>, today: string) =>
   !Object.keys(photos).some((date) => date.slice(0, 7) === today.slice(0, 7));
+
+/** This calendar month's check-in, if there is one. */
+export function monthPhoto(photos: Record<string, MonthlyPhoto>, month: string): MonthlyPhoto | null {
+  const dates = Object.keys(photos).filter((date) => date.slice(0, 7) === month.slice(0, 7)).sort();
+  return dates.length ? photos[dates[dates.length - 1]] : null;
+}
 
 /** The most recent check-in from before this calendar month. */
 export function previousPhoto(photos: Record<string, MonthlyPhoto>, today: string): MonthlyPhoto | null {

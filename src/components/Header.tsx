@@ -1,38 +1,21 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { addDays, WEEKDAY_LETTERS, headerDate, shortDate, weekStartKey, weekdayIndex } from '../lib/dates';
+import { compactDate } from '../lib/calendar';
+import { addDays, shortDate } from '../lib/dates';
 import { visibleDefaultDayLabels } from '../lib/daylabels';
-import { WEEKLY_GOAL, streakWeeks, trainedDays } from '../lib/progress';
 import { haptic } from '../lib/haptics';
 import { useGym } from '../store/gym';
-import { colors } from '../theme';
+import { colors, fonts } from '../theme';
 import type { Unit } from '../types';
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, TrashIcon } from './Icons';
+import { CalendarSheet } from './attendance/CalendarSheet';
+import { PlanFlow } from './plans/PlanFlow';
 import { AddDayNameSheet } from './sheets/AddDayNameSheet';
 import { Sheet } from './Sheet';
 
-function WeekDots({ days, todayIdx }: { days: boolean[]; todayIdx: number }) {
-  return (
-    <View className="flex-row gap-1.5" accessibilityLabel={`${days.filter(Boolean).length} workouts this week`}>
-      {days.map((trained, i) => (
-        <View key={i} className="items-center gap-1">
-          <View
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: trained ? colors.accent : 'transparent',
-              borderWidth: trained ? 0 : 1.5,
-              borderColor: i === todayIdx ? colors.label : colors.outline,
-            }}
-          />
-          <Text className="text-[9px] text-muted/50">{WEEKDAY_LETTERS[i]}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
+/** One Android modal has to finish closing before the next can open. */
+const SHEET_SETTLE_MS = 320;
 
 const Chip = ({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) => (
   <Pressable
@@ -107,16 +90,19 @@ function DayChip({
   );
 }
 
-/** Compact date · workout-day label · weekly streak, with ‹ › arrows to step through days. Tap the label to change day or units, "+" to name a new one. */
-export function Header() {
+/**
+ * Date with ‹ › arrows (tap it for the calendar) and, on the right, the workout-day name while on
+ * today or a way back to today from anywhere else. `ink` recolours it for the full-colour day pages;
+ * `locked` drops the workout-day name, since those pages have nothing to name.
+ */
+export function Header({ ink = '#fff', locked = false }: { ink?: string; locked?: boolean }) {
   const { today, realToday, label, data, actions } = useGym();
   const [sheet, setSheet] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
   const [armed, setArmed] = useState<string | null>(null);
 
-  const start = weekStartKey(today);
-  const days = useMemo(() => trainedDays(data.sessions, start), [data.sessions, start]);
-  const streak = useMemo(() => streakWeeks(data.sessions, today), [data.sessions, today]);
   const visibleDefaults = useMemo(() => visibleDefaultDayLabels(data.hiddenDayLabels), [data.hiddenDayLabels]);
 
   const closeSheet = () => {
@@ -129,8 +115,32 @@ export function Header() {
     actions.setWorkDate(addDays(today, n));
   };
 
+  const textStyle = { color: ink, fontFamily: fonts.bold, fontSize: 15 };
+
   return (
-    <View>
+    <View className="flex-row items-center justify-between">
+      <View className="flex-row items-center" style={{ marginLeft: -10 }}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Previous day" onPress={() => step(-1)} className="items-center justify-center active:opacity-60" style={{ width: 44, height: 44 }}>
+          <ChevronLeftIcon size={20} color={ink} stroke={2.4} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${compactDate(today)}. Open calendar`}
+          onPress={() => {
+            haptic.tap();
+            setCalendarOpen(true);
+          }}
+          className="flex-row items-center active:opacity-60"
+          style={{ height: 44, paddingHorizontal: 2, gap: 3 }}
+        >
+          <Text style={textStyle}>{compactDate(today)}</Text>
+          <ChevronDownIcon size={16} color={ink} />
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Next day" onPress={() => step(1)} className="items-center justify-center active:opacity-60" style={{ width: 44, height: 44 }}>
+          <ChevronRightIcon size={20} color={ink} stroke={2.4} />
+        </Pressable>
+      </View>
+
       {today !== realToday ? (
         <Pressable
           accessibilityRole="button"
@@ -139,72 +149,44 @@ export function Header() {
             haptic.tap();
             actions.setWorkDate(null);
           }}
-          className="mb-2 h-11 flex-row items-center gap-2 self-start rounded-full bg-fill px-4 active:opacity-70"
+          className="justify-center active:opacity-60"
+          style={{ height: 44, marginRight: -6, paddingHorizontal: 6 }}
         >
-          <Text className="text-body text-muted">Logging {shortDate(today)}</Text>
-          <Text className="text-body font-semibold text-label">Jump to today</Text>
+          <Text style={[textStyle, ink === '#fff' ? { color: colors.accent } : null]}>Today</Text>
         </Pressable>
-      ) : null}
-    <View className="flex-row items-end justify-between">
-      <View className="flex-1 flex-row items-center gap-1 pr-3">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Previous day"
-          hitSlop={8}
-          onPress={() => step(-1)}
-          className="h-8 w-8 items-center justify-center rounded-full active:opacity-60"
-        >
-          <ChevronLeftIcon size={16} />
-        </Pressable>
-        <View className="flex-1" style={{ minWidth: 0 }}>
-          <Text className="text-caption uppercase tracking-wider text-muted/60">{headerDate(today)}</Text>
-          <View className="flex-row items-center gap-1">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Workout day ${label}. Tap to change.`}
-              onPress={() => {
-                haptic.tap();
-                setSheet(true);
-              }}
-              className="shrink flex-row items-center gap-2 py-1 active:opacity-70"
-            >
-              <Text className="text-dayname text-label" numberOfLines={1}>
-                {label}
-              </Text>
-              <ChevronDownIcon />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="New workout day name"
-              hitSlop={8}
-              onPress={() => {
-                haptic.tap();
-                setAddOpen(true);
-              }}
-              className="h-8 w-8 items-center justify-center rounded-full active:opacity-70"
-              style={{ backgroundColor: colors.fill }}
-            >
-              <PlusIcon size={15} color={colors.accent} stroke={2.6} />
-            </Pressable>
-          </View>
+      ) : locked ? null : (
+        <View className="flex-row items-center" style={{ flexShrink: 1, gap: 2, marginRight: -6 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Workout day ${label}. Tap to change.`}
+            onPress={() => {
+              haptic.tap();
+              setSheet(true);
+            }}
+            className="shrink flex-row items-center active:opacity-70"
+            style={{ height: 44, paddingHorizontal: 6, gap: 4 }}
+          >
+            <Text style={[textStyle, { flexShrink: 1 }]} numberOfLines={1}>
+              {label}
+            </Text>
+            <ChevronDownIcon size={18} color={ink} stroke={2.4} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="New workout plan"
+            onPress={() => {
+              haptic.tap();
+              setPlanOpen(true);
+            }}
+            className="items-center justify-center active:opacity-70"
+            style={{ width: 44, height: 44, marginRight: -4 }}
+          >
+            <PlusIcon size={22} color={ink === '#fff' ? colors.accent : ink} stroke={2.6} />
+          </Pressable>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Next day"
-          hitSlop={8}
-          onPress={() => step(1)}
-          className="h-8 w-8 items-center justify-center rounded-full active:opacity-60"
-        >
-          <ChevronRightIcon size={16} />
-        </Pressable>
-      </View>
+      )}
 
-      <View className="items-end pb-1.5">
-        <WeekDots days={days} todayIdx={weekdayIndex(today)} />
-        <Text className="mt-1 text-caption text-muted/60">
-          {streak > 0 ? `${streak} week streak` : `Goal ${WEEKLY_GOAL} workouts/wk`}
-        </Text>
-      </View>
+      <CalendarSheet visible={calendarOpen} date={today} onClose={() => setCalendarOpen(false)} onPickDate={(d) => actions.setWorkDate(d === realToday ? null : d)} />
 
       <Sheet visible={sheet} onClose={closeSheet} title="Workout day">
         <View className="px-4 pb-2">
@@ -283,6 +265,23 @@ export function Header() {
             </>
           ) : null}
 
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="New workout day name"
+            onPress={() => {
+              haptic.tap();
+              closeSheet();
+              setTimeout(() => setAddOpen(true), SHEET_SETTLE_MS);
+            }}
+            className="mt-3 h-11 flex-row items-center self-start active:opacity-60"
+            style={{ gap: 6 }}
+          >
+            <PlusIcon size={16} color={colors.accent} stroke={2.6} />
+            <Text className="text-body" style={{ color: colors.accent, fontFamily: fonts.semibold }}>
+              New day name
+            </Text>
+          </Pressable>
+
           <Text className="mb-2 mt-6 text-h2 text-label">Units</Text>
           <View className="flex-row gap-2">
             {(['kg', 'lb'] as Unit[]).map((u) => (
@@ -301,13 +300,14 @@ export function Header() {
         </View>
       </Sheet>
 
+      <PlanFlow visible={planOpen} onClose={() => setPlanOpen(false)} />
+
       <AddDayNameSheet
         visible={addOpen}
         onClose={() => setAddOpen(false)}
         existing={data.customDayLabels}
         onSave={(name) => actions.addDayLabel(name)}
       />
-    </View>
     </View>
   );
 }

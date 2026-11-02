@@ -17,14 +17,18 @@ export interface BodyData {
   heightUnit: HeightUnit;
   /** chronological, oldest first */
   entries: WeightEntry[];
+  /** the target goal weight, always kg */
+  goalKg: number | null;
 }
 
-export const emptyBody: BodyData = { heightCm: null, heightUnit: 'cm', entries: [] };
+export const emptyBody: BodyData = { heightCm: null, heightUnit: 'cm', entries: [], goalKg: null };
 
 export const MIN_HEIGHT_CM = 100;
 export const MAX_HEIGHT_CM = 250;
 export const MIN_KG = 20;
 export const MAX_KG = 400;
+export const MIN_GOAL_KG = 30;
+export const MAX_GOAL_KG = 300;
 export const DEFAULT_KG = 70;
 export const DEFAULT_HEIGHT_CM = 170;
 
@@ -47,12 +51,12 @@ export interface CategoryMeta {
   color: string;
 }
 
-/** Normal is green; every out-of-range band is System Red. */
+/** The same four bands and colours as the BMI page's range bar. */
 export const BMI_CATEGORIES: CategoryMeta[] = [
-  { key: 'underweight', label: 'Underweight', range: '< 18.5', min: 0, color: '#FF453A' },
-  { key: 'normal', label: 'Normal Weight', range: '18.5 – 24.9', min: 18.5, color: '#30D158' },
-  { key: 'overweight', label: 'Overweight', range: '25.0 – 29.9', min: 25, color: '#FF453A' },
-  { key: 'obese', label: 'Obese', range: '≥ 30.0', min: 30, color: '#FF453A' },
+  { key: 'underweight', label: 'Underweight', range: '< 18.5', min: 0, color: '#C7C7CC' },
+  { key: 'normal', label: 'Healthy', range: '18.5 – 24.9', min: 18.5, color: '#3DFF6E' },
+  { key: 'overweight', label: 'Overweight', range: '25.0 – 29.9', min: 25, color: '#FFD60A' },
+  { key: 'obese', label: 'Obese', range: '≥ 30.0', min: 30, color: '#FF5A4F' },
 ];
 
 export const categoryMeta = (key: BmiCategory) => BMI_CATEGORIES.find((c) => c.key === key)!;
@@ -132,6 +136,8 @@ export function withDeltas(entries: WeightEntry[]): EntryView[] {
 
 export const isValidKg = (kg: number) => Number.isFinite(kg) && kg >= MIN_KG && kg <= MAX_KG;
 
+export const isValidGoalKg = (kg: number) => Number.isFinite(kg) && kg >= MIN_GOAL_KG && kg <= MAX_GOAL_KG;
+
 /** 12h clock, e.g. "8:05 AM". */
 export function fmtTime(at: number): string {
   const d = new Date(at);
@@ -150,7 +156,8 @@ export function parseBody(raw: string | null): BodyData | null {
           .sort((a, b) => a.at - b.at)
       : [];
     const h = typeof p.heightCm === 'number' && p.heightCm >= MIN_HEIGHT_CM && p.heightCm <= MAX_HEIGHT_CM ? p.heightCm : null;
-    return { heightCm: h, heightUnit: p.heightUnit === 'ftin' ? 'ftin' : 'cm', entries };
+    const goalKg = typeof p.goalKg === 'number' && isValidGoalKg(p.goalKg) ? p.goalKg : null;
+    return { heightCm: h, heightUnit: p.heightUnit === 'ftin' ? 'ftin' : 'cm', entries, goalKg };
   } catch {
     return null;
   }

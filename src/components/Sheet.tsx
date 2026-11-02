@@ -11,10 +11,12 @@ interface SheetProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  /** The large condensed heading, without the close button. */
+  display?: boolean;
 }
 
 /** Bottom sheet: 250ms ease-out slide + backdrop fade. Stays mounted just long enough to animate out. */
-export function Sheet({ visible, onClose, title, children }: SheetProps) {
+export function Sheet({ visible, onClose, title, children, display = false }: SheetProps) {
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [mounted, setMounted] = useState(visible);
@@ -44,10 +46,9 @@ export function Sheet({ visible, onClose, title, children }: SheetProps) {
           style={[
             {
               maxHeight: height * 0.82,
-              backgroundColor: colors.surface,
-              borderColor: colors.line,
-              borderWidth: 1,
-              borderBottomWidth: 0,
+              backgroundColor: colors.panel,
+              borderTopColor: colors.border,
+              borderTopWidth: 1,
               borderTopLeftRadius: 28,
               borderTopRightRadius: 28,
               paddingBottom: insets.bottom + 16,
@@ -56,18 +57,20 @@ export function Sheet({ visible, onClose, title, children }: SheetProps) {
           ]}
         >
           <View className="items-center pt-2">
-            <View style={{ height: 4, width: 36, borderRadius: 2, backgroundColor: colors.outline }} />
+            <View style={{ height: 4, width: 36, borderRadius: 2, backgroundColor: colors.handle }} />
           </View>
           <View className="flex-row items-center justify-between px-4 pb-2 pt-3">
-            <Text className="text-h2 text-label">{title}</Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              onPress={onClose}
-              className="h-8 w-8 items-center justify-center rounded-full bg-fill active:opacity-60"
-            >
-              <CloseIcon size={14} />
-            </Pressable>
+            <Text className={display ? 'text-display text-label' : 'text-h1 text-label'}>{title}</Text>
+            {display ? null : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                onPress={onClose}
+                className="h-11 w-11 items-center justify-center rounded-full bg-fill active:opacity-60"
+              >
+                <CloseIcon size={16} color="#fff" />
+              </Pressable>
+            )}
           </View>
           {children}
         </Animated.View>

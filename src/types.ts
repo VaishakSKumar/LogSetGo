@@ -73,10 +73,16 @@ export interface Session {
 }
 
 /** A saved workout: exercises in order, with how many sets to do. */
+export interface RoutineItem {
+  exerciseId: string;
+  sets: number;
+  reps?: number;
+}
+
 export interface Routine {
   id: string;
   name: string;
-  items: { exerciseId: string; sets: number; reps?: number }[];
+  items: RoutineItem[];
 }
 
 /** Target for an exercise: the heaviest weight (kg) you want to lift. */
@@ -90,9 +96,15 @@ export interface Prefs {
   /** weight step for the +/- buttons and overload suggestions, in each unit */
   stepKg: number;
   stepLb: number;
+  /** days a week you aim to train, 1-7 */
+  weeklyGoalDays: number;
+  /** the month (YYYY-MM) whose check-in photo was skipped, so it does not ask again until the next one */
+  skippedPhotoMonth: string | null;
+  /** "Don't show this again" on the new plan info screens */
+  hidePlanInfo: { manual: boolean; file: boolean };
 }
 
-export const DEFAULT_PREFS: Prefs = { stepKg: 2.5, stepLb: 5 };
+export const DEFAULT_PREFS: Prefs = { stepKg: 2.5, stepLb: 5, weeklyGoalDays: 5, skippedPhotoMonth: null, hidePlanInfo: { manual: false, file: false } };
 
 export interface AppData {
   version: 1;

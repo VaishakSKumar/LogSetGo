@@ -50,7 +50,7 @@ export function NumField({ label, value, onChange, step, min = 0, max = 9999, su
             selectionColor={colors.accent}
             accessibilityLabel={label}
             className="text-center text-label"
-            style={{ width: 72, fontFamily: roundedFont, fontSize: 24, lineHeight: 30, fontWeight: '700', padding: 0, outlineStyle: 'none' } as never}
+            style={{ width: 72, fontFamily: roundedFont, fontSize: 24, lineHeight: 30, padding: 0, outlineStyle: 'none' } as never}
           />
           {suffix ? <Text className="text-caption text-muted">{suffix}</Text> : null}
         </View>

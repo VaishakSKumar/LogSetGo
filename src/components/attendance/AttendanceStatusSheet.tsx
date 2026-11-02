@@ -27,8 +27,8 @@ export function AttendanceStatusSheet({ visible, onSelect, onClose }: Props) {
             accessibilityRole="button"
             accessibilityLabel={label}
             onPress={() => onSelect(status)}
-            className="h-14 justify-center rounded-2xl border bg-fill px-4 active:opacity-70"
-            style={{ borderColor: colors.line }}
+            className="h-14 justify-center rounded-[14px] border bg-raised px-4 active:opacity-70"
+            style={{ borderColor: colors.border }}
           >
             <Text className="text-h2 text-label">{label}</Text>
           </Pressable>

@@ -1,13 +1,13 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { roundedFont } from '../theme';
+import { fonts, roundedFont } from '../theme';
 
 /* ── Surfaces ── */
 
 export function Card({ children, className = '', style }: { children: ReactNode; className?: string; style?: StyleProp<ViewStyle> }) {
   return (
-    <View className={`rounded-3xl border border-line bg-surface p-3 ${className}`} style={style}>
+    <View className={`rounded-[18px] border border-line bg-surface p-3 ${className}`} style={style}>
       {children}
     </View>
   );
@@ -15,8 +15,10 @@ export function Card({ children, className = '', style }: { children: ReactNode;
 
 export function SectionHeader({ title, right }: { title: string; right?: ReactNode }) {
   return (
-    <View className="mb-2 flex-row items-center justify-between px-1">
-      <Text className="text-h2 text-label">{title}</Text>
+    <View className="mb-2 flex-row items-center justify-between">
+      <Text className="text-secondary" style={{ fontFamily: fonts.semibold, fontSize: 14, lineHeight: 20 }}>
+        {title}
+      </Text>
       {right}
     </View>
   );
@@ -24,7 +26,7 @@ export function SectionHeader({ title, right }: { title: string; right?: ReactNo
 
 /* ── Text ── */
 
-/** Weights, reps and other figures: SF Rounded, medium, tabular. */
+/** Weights, reps and other figures: tabular. */
 export function Num({
   children,
   className = '',
@@ -68,7 +70,7 @@ interface PillButtonProps {
   compact?: boolean;
 }
 
-/** 48pt tall, fully rounded. `compact` is 44pt for inline secondary actions. */
+/** 48pt tall. `compact` is 44pt for inline secondary actions. */
 export function PillButton({ label, onPress, variant = 'secondary', disabled, icon, detail, className = '', compact }: PillButtonProps) {
   const v = VARIANT[variant];
   return (
@@ -77,7 +79,7 @@ export function PillButton({ label, onPress, variant = 'secondary', disabled, ic
       accessibilityLabel={detail ? `${label}, ${detail}` : label}
       accessibilityState={{ disabled: !!disabled }}
       onPress={disabled ? undefined : onPress}
-      className={`flex-row items-center justify-center gap-2 rounded-full active:opacity-70 ${
+      className={`flex-row items-center justify-center gap-2 rounded-[14px] active:opacity-70 ${
         compact ? 'h-11 px-4' : 'h-12 px-5'
       } ${disabled ? 'bg-fill' : v.bg} ${className}`}
     >

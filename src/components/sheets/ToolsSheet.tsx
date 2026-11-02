@@ -77,7 +77,7 @@ export function ToolsSheet({ visible, onClose }: { visible: boolean; onClose: ()
             </View>
             <View className="my-4 items-center">
               <Caption>Estimated 1-rep max</Caption>
-              <Text className="tabular-nums text-label" style={{ fontFamily: roundedFont, fontSize: 34, lineHeight: 41, fontWeight: '700', letterSpacing: -0.5 }}>
+              <Text className="tabular-nums text-label" style={{ fontFamily: roundedFont, fontSize: 34, lineHeight: 41, letterSpacing: -0.5 }}>
                 {roundDisplay(rm.estimate)} <Text className="text-h2 text-muted">{unit}</Text>
               </Text>
               <Caption>

@@ -24,7 +24,7 @@ describe('Logging a workout', () => {
 
     // Build set 1 with the dock steppers: 4 × 2.5 kg = 10 kg, 5 reps -> 50 kg of volume.
     for (let i = 0; i < 4; i++) await press('Increase kg');
-    for (let i = 0; i < 5; i++) await press('Increase Reps');
+    for (let i = 0; i < 5; i++) await press('Increase reps');
     await press(/^Log set 1/);
 
     // The row locks (undo is offered) and the rest timer starts by itself.
@@ -48,7 +48,7 @@ describe('Logging a workout', () => {
     await renderWithApp(<Harness />);
     await screen.findAllByLabelText('Log set 1');
     await press('Increase kg');
-    await press('Increase Reps');
+    await press('Increase reps');
     await press(/^Log set 1/);
     await press('Undo set 1');
     await screen.findAllByLabelText('Log set 1');

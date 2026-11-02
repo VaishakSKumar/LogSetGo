@@ -5,7 +5,7 @@ import { Platform, Pressable, Text, View } from 'react-native';
 import { logError, readErrors } from '../lib/diagnostics';
 import { formatErrorReport } from '../lib/errorlog';
 import { saveTextFile } from '../lib/files';
-import { colors } from '../theme';
+import { colors, fonts } from '../theme';
 
 interface State {
   error: Error | null;
@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     if (!this.state.error) return this.props.children;
     return (
       <View style={{ flex: 1, backgroundColor: colors.base, justifyContent: 'center', padding: 24 }} accessibilityRole="alert">
-        <Text style={{ color: colors.label, fontSize: 28, fontWeight: '700', letterSpacing: -0.5 }}>Something went wrong</Text>
+        <Text style={{ color: colors.label, fontSize: 28, fontFamily: fonts.bold, letterSpacing: -0.5 }}>Something went wrong</Text>
         <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 21, marginTop: 8 }}>
           LogSetGo hit an unexpected problem. Your workouts, weights and attendance are saved on this device and weren’t affected.
         </Text>
@@ -46,14 +46,14 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           onPress={() => this.setState({ error: null, note: null })}
           style={{ marginTop: 24, height: 48, borderRadius: 24, backgroundColor: colors.label, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Text style={{ color: '#000', fontSize: 17, fontWeight: '600' }}>Try again</Text>
+          <Text style={{ color: '#000', fontSize: 17, fontFamily: fonts.semibold }}>Try again</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
           onPress={this.share}
           style={{ marginTop: 12, height: 48, borderRadius: 24, backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' }}
         >
-          <Text style={{ color: colors.label, fontSize: 17, fontWeight: '600' }}>Share error log</Text>
+          <Text style={{ color: colors.label, fontSize: 17, fontFamily: fonts.semibold }}>Share error log</Text>
         </Pressable>
         {this.state.note ? <Text style={{ color: colors.muted, fontSize: 12, marginTop: 12 }}>{this.state.note}</Text> : null}
       </View>

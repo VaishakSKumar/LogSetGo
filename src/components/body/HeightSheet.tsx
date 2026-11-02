@@ -110,7 +110,7 @@ export function HeightSheet({ visible, onClose }: { visible: boolean; onClose: (
                 selectionColor={colors.accent}
                 accessibilityLabel="Height in centimetres"
                 className="text-center text-label"
-                style={{ width: 96, fontFamily: roundedFont, fontSize: 34, lineHeight: 41, fontWeight: '700', letterSpacing: -0.5, padding: 0, outlineStyle: 'none' } as never}
+                style={{ width: 96, fontFamily: roundedFont, fontSize: 34, lineHeight: 41, letterSpacing: -0.5, padding: 0, outlineStyle: 'none' } as never}
               />
               <Text className="text-h2 text-muted">cm</Text>
             </View>

@@ -89,7 +89,16 @@ export function normalizeAppData(input: unknown): AppData | null {
           Object.entries(p.goals).filter(([, g]) => isObj(g) && typeof g.targetKg === 'number' && g.targetKg > 0),
         ) as Record<string, Goal>)
       : {},
-    prefs: { stepKg: posNum(prefs.stepKg, DEFAULT_PREFS.stepKg), stepLb: posNum(prefs.stepLb, DEFAULT_PREFS.stepLb) },
+    prefs: {
+      stepKg: posNum(prefs.stepKg, DEFAULT_PREFS.stepKg),
+      stepLb: posNum(prefs.stepLb, DEFAULT_PREFS.stepLb),
+      weeklyGoalDays: typeof prefs.weeklyGoalDays === 'number' && prefs.weeklyGoalDays >= 1 && prefs.weeklyGoalDays <= 7 ? Math.round(prefs.weeklyGoalDays) : DEFAULT_PREFS.weeklyGoalDays,
+      skippedPhotoMonth: typeof prefs.skippedPhotoMonth === 'string' ? prefs.skippedPhotoMonth : null,
+      hidePlanInfo: {
+        manual: isObj(prefs.hidePlanInfo) && prefs.hidePlanInfo.manual === true,
+        file: isObj(prefs.hidePlanInfo) && prefs.hidePlanInfo.file === true,
+      },
+    },
     customDayLabels: cleanDayLabels(p.customDayLabels),
     hiddenDayLabels: cleanHiddenDayLabels(p.hiddenDayLabels),
     exerciseModes: cleanExerciseModes(p.exerciseModes),

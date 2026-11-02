@@ -14,7 +14,7 @@ import { addCustomDayLabel, hideDefaultDayLabel, isDefaultDayLabel, MAX_CUSTOM_D
 import { formatDuration, parseDurationInput } from './duration';
 import { cuesFor } from '../data/formCues';
 import { parseYouTubeId } from './media';
-import { MAX_PHOTO_BYTES, needsMonthlyPhoto, photoError, previousPhoto } from './photoCheck';
+import { MAX_PHOTO_BYTES, isImageBytes, needsMonthlyPhoto, photoError, previousPhoto } from './photoCheck';
 import { bestDurationExcluding, buildDurationHistory, buildHistory, DAY_LABELS, isLogged, isTimeSet, loadOf, resolveSet, setKg, suggestNext, weekTotals } from './progress';
 import { exerciseTut, exerciseVolume, formatSets, loggedExercises, summarizeDay } from './session';
 import { PLAN_EXERCISE_IDS, buildPlan, routineFromSession, routineIdFor, type PlanDays } from './routines';
@@ -168,7 +168,7 @@ describe('reducer: routines, goals, prefs, notes, set details', () => {
     s = reducer(s, { type: 'setGoal', exerciseId: 'bench', goal: null });
     assert.deepEqual(s.goals, {});
     s = reducer(s, { type: 'setPrefs', prefs: { stepKg: 1.25 } });
-    assert.deepEqual(s.prefs, { stepKg: 1.25, stepLb: 5 });
+    assert.deepEqual(s.prefs, { ...DEFAULT_PREFS, stepKg: 1.25 });
   });
 
   it('set details (RPE, note) and exercise notes', () => {
@@ -767,6 +767,14 @@ describe('monthly photo rules', () => {
     assert.match(photoError('a.pdf.exe', 'application/octet-stream', 100)!, /Only GIF/);
     assert.match(photoError('a.heic', 'image/heic', 100)!, /Only GIF/);
     assert.match(photoError('a.png', 'image/png', null)!, /size/);
+    const bytes = (...b: number[]) => new Uint8Array(b);
+    assert.equal(isImageBytes(bytes(0xff, 0xd8, 0xff, 0xe0)), true);
+    assert.equal(isImageBytes(bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)), true);
+    assert.equal(isImageBytes(bytes(0x47, 0x49, 0x46, 0x38, 0x39, 0x61)), true);
+    assert.equal(isImageBytes(bytes(0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50)), true);
+    assert.equal(isImageBytes(bytes(0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x41, 0x56, 0x45)), false); // a WAV, not a WebP
+    assert.equal(isImageBytes(new TextEncoder().encode('not an image')), false);
+    assert.equal(isImageBytes(bytes()), false);
   });
 
   it('is due once per calendar month, and compares with the latest earlier photo', () => {

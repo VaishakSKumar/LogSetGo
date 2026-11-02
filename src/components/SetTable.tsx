@@ -1,9 +1,8 @@
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { PillButton } from './ui';
 import { COL, SetRowItem } from './SetRow';
 import { PlusIcon } from './Icons';
-import { colors } from '../theme';
+import { colors, fonts } from '../theme';
 import type { Ghost, LoadKind, SetMode, SetPerf, SetRow, Unit } from '../types';
 
 interface SetTableProps {
@@ -23,49 +22,50 @@ interface SetTableProps {
 }
 
 const Head = ({ children, className = '' }: { children: string; className?: string }) => (
-  <Text className={`text-caption uppercase tracking-wider text-muted/60 ${className}`}>{children}</Text>
+  <Text className={`text-muted ${className}`} style={{ fontFamily: fonts.semibold, fontSize: 12, lineHeight: 20 }}>
+    {children}
+  </Text>
 );
 
-/** Active-set card: SET | PREVIOUS | WEIGHT | REPS-or-TIME | ✓ */
+/** Set | Last | kg | Reps-or-Time | ✓ */
 export function SetTable({ rows, ghosts, prevSets, unit, mode, load = 'kg', activeRowId, onChange, onLog, onAdd, onRemove, onDetails }: SetTableProps) {
   const canRemove = rows.length > 1 && !rows[rows.length - 1].done;
 
   return (
-    <View className="rounded-3xl border border-line bg-surface p-3" style={{ borderColor: colors.line }}>
-      <View className="mb-2 flex-row items-center px-2">
+    <View>
+      <View className="flex-row items-center" style={{ paddingHorizontal: 6 }}>
         <Head className={COL.set}>Set</Head>
-        <Head className={COL.previous}>Previous</Head>
-        {load === 'none' ? null : <Head className="flex-1 pr-2 text-right">{load === 'extra' ? `+${unit}` : unit}</Head>}
-        <Head className={`${load === 'none' ? 'flex-1' : `${COL.reps} ml-2`} pr-2 text-right`}>{mode === 'time' ? 'Time' : 'Reps'}</Head>
+        <Head className={COL.previous}>Last</Head>
+        {load === 'none' ? null : <Head className="flex-1 text-center">{load === 'extra' ? `+${unit}` : unit}</Head>}
+        <Head className="flex-1 text-center">{mode === 'time' ? 'Time' : 'Reps'}</Head>
         <View className={COL.check} />
       </View>
 
-      <View className="gap-2">
-        {rows.map((row, i) => (
-          <SetRowItem
-            key={row.id}
-            index={i}
-            row={row}
-            prev={prevSets?.[i]}
-            ghost={ghosts[i]}
-            unit={unit}
-            active={row.id === activeRowId}
-            load={load}
-            onChange={onChange}
-            onLog={onLog}
-            onDetails={onDetails}
-          />
-        ))}
-      </View>
+      {rows.map((row, i) => (
+        <SetRowItem
+          key={row.id}
+          index={i}
+          row={row}
+          prev={prevSets?.[i]}
+          ghost={ghosts[i]}
+          unit={unit}
+          active={row.id === activeRowId}
+          load={load}
+          onChange={onChange}
+          onLog={onLog}
+          onDetails={onDetails}
+        />
+      ))}
 
-      <View className="mt-3 flex-row gap-2">
-        <View className="flex-1">
-          <PillButton compact label="Add set" onPress={onAdd} icon={<PlusIcon size={16} color={colors.label} />} />
-        </View>
+      <View className="flex-row">
+        <Pressable accessibilityRole="button" accessibilityLabel="Add set" onPress={onAdd} className="flex-1 flex-row items-center justify-center active:opacity-60" style={{ height: 44, gap: 6 }}>
+          <PlusIcon size={16} color={colors.accent} stroke={2.8} />
+          <Text style={{ color: colors.accent, fontFamily: fonts.bold, fontSize: 15 }}>Add set</Text>
+        </Pressable>
         {canRemove ? (
-          <View className="w-28">
-            <PillButton compact label="Remove" onPress={onRemove} />
-          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Remove" onPress={onRemove} className="justify-center active:opacity-60" style={{ height: 44, paddingHorizontal: 12 }}>
+            <Text style={{ color: colors.muted, fontFamily: fonts.semibold, fontSize: 14 }}>Remove</Text>
+          </Pressable>
         ) : null}
       </View>
     </View>

@@ -100,6 +100,7 @@ export function mergeBackups(current: BackupParts, incoming: Backup): BackupPart
       heightCm: current.body.heightCm ?? incoming.body.heightCm,
       heightUnit: current.body.heightCm != null ? current.body.heightUnit : incoming.body.heightUnit,
       entries: [...current.body.entries, ...incoming.body.entries.filter((e) => !seen.has(e.id))].sort((a, b) => a.at - b.at),
+      goalKg: current.body.goalKg ?? incoming.body.goalKg,
     },
     timer: {
       ...current.timer,

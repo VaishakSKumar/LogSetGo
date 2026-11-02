@@ -85,12 +85,12 @@ describe('Gym Progress reflects the selected date', () => {
       return <WorkoutScreen />;
     }
     await renderWithApp(<Harness />);
-    await screen.findByText('No workout logged for this date yet.');
+    await screen.findByText('Nothing to log yet. You can plan a Holiday.');
     expect(screen.queryByLabelText('Exercise search')).toBeNull();
     expect(screen.queryByLabelText('Add exercise')).toBeNull();
   });
 
-  it('an untouched past date shows a plain "nothing logged" placeholder, not the today search hero', async () => {
+  it('an untouched past date shows a plain "not marked" page, not the today search hero', async () => {
     function Harness() {
       const { ready, actions } = useGym();
       useEffect(() => {
@@ -99,7 +99,7 @@ describe('Gym Progress reflects the selected date', () => {
       return <WorkoutScreen />;
     }
     await renderWithApp(<Harness />);
-    await screen.findByText('Nothing was logged on this day.');
+    await screen.findByText('No attendance was saved for this day.');
     expect(screen.queryByLabelText('Exercise search')).toBeNull();
   });
 
@@ -110,8 +110,8 @@ describe('Gym Progress reflects the selected date', () => {
       </WithPastLog>,
     );
     await screen.findByText('Barbell Bench Press');
-    expect(screen.getByText('60')).toBeTruthy();
-    expect(screen.getByText('8')).toBeTruthy();
+    expect(screen.getByText('Here is what you logged.')).toBeTruthy();
+    expect(screen.getByText('1 set')).toBeTruthy();
 
     // Nothing here can change what's already logged.
     expect(screen.queryByLabelText('Add exercise')).toBeNull();
@@ -132,13 +132,12 @@ describe('Day-to-day navigation', () => {
 
     await press('Previous day');
     await screen.findByLabelText(`Logging ${shortDate(yesterday)}. Jump to today.`);
-    // Yesterday was never named, so it shows its own weekday default, not today's "Full Body".
-    await screen.findByLabelText(`Workout day ${defaultLabelFor(yesterday)}. Tap to change.`);
+    // The workout-day label belongs to today's header only.
+    expect(screen.queryByLabelText(/^Workout day /)).toBeNull();
 
     await press('Next day');
     await press('Next day');
     await screen.findByLabelText(`Logging ${shortDate(tomorrow)}. Jump to today.`);
-    await screen.findByLabelText(`Workout day ${defaultLabelFor(tomorrow)}. Tap to change.`);
 
     await press('Previous day');
     await waitFor(() => expect(screen.queryByLabelText(/^Logging /)).toBeNull()); // back on today

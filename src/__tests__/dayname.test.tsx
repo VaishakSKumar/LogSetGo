@@ -10,12 +10,18 @@ const todayDefault = defaultLabelFor(dateKey());
 
 const press = async (label: string | RegExp) => fireEvent.press((await screen.findAllByLabelText(label))[0]);
 
+/** The picker's New day name row; the + on the header now starts a workout plan. */
+const openNewDayName = async () => {
+  await press(/^Workout day .+\. Tap to change\.$/);
+  await press('New workout day name');
+};
+
 describe('Custom workout day names', () => {
   it('+ opens a fresh sheet; a preset fills the field; Save & Apply creates it, applies it, and it persists', async () => {
     await renderWithApp(<Header />);
     await screen.findByLabelText(/^Workout day .+\. Tap to change\.$/); // today's default label, before anything changes
 
-    await press('New workout day name');
+    await openNewDayName();
     const input = await screen.findByLabelText('Workout day name');
     expect(input.props.value).toBe(''); // fresh every time
 
@@ -39,8 +45,8 @@ describe('Custom workout day names', () => {
 
   it('rejects blank input, and reuses (does not duplicate) an existing custom name', async () => {
     await renderWithApp(<Header />);
-    await press('New workout day name');
-    expect(screen.getByLabelText('Save & Apply').props.accessibilityState.disabled).toBe(true);
+    await openNewDayName();
+    expect((await screen.findByLabelText('Save & Apply')).props.accessibilityState.disabled).toBe(true);
 
     await fireEvent.changeText(await screen.findByLabelText('Workout day name'), '   ');
     expect(screen.getByLabelText('Save & Apply').props.accessibilityState.disabled).toBe(true);
@@ -50,7 +56,7 @@ describe('Custom workout day names', () => {
     await screen.findByText('Core & Cardio');
 
     // Same name again (different case/spacing): still only one entry in the picker.
-    await press('New workout day name');
+    await openNewDayName();
     await fireEvent.changeText(await screen.findByLabelText('Workout day name'), '  core   & cardio ');
     await screen.findByText(/You already have/);
     await press('Save & Apply');
@@ -62,7 +68,7 @@ describe('Custom workout day names', () => {
 
   it('long-press arms delete; tapping elsewhere cancels; tapping the trash removes it without touching the current label', async () => {
     await renderWithApp(<Header />);
-    await press('New workout day name');
+    await openNewDayName();
     await fireEvent.changeText(await screen.findByLabelText('Workout day name'), 'Delts & Arms');
     await press('Save & Apply');
     await waitFor(() => expect(screen.getByText('Delts & Arms')).toBeTruthy());

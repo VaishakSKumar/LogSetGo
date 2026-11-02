@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { haptic } from '../../lib/haptics';
-import { colors, motion } from '../../theme';
+import { colors, fonts, motion } from '../../theme';
 import type { SetMode } from '../../types';
 
 const OPTIONS: { key: SetMode; label: string }[] = [
@@ -12,8 +12,7 @@ const OPTIONS: { key: SetMode; label: string }[] = [
 ];
 
 /**
- * Apple-style segmented control: an elevated #2C2C2E track with a sliding #30D158 pill behind
- * whichever segment is active. Changing it saves your choice for this exercise going forward.
+ * Segmented control: a dark track with a sliding white pill behind whichever segment is active. Changing it saves your choice for this exercise going forward.
  */
 export function ModeToggle({ mode, onChange }: { mode: SetMode; onChange: (mode: SetMode) => void }) {
   const [trackWidth, setTrackWidth] = useState(0);
@@ -32,13 +31,13 @@ export function ModeToggle({ mode, onChange }: { mode: SetMode; onChange: (mode:
     <View
       accessibilityRole="tablist"
       onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
-      className="h-9 w-[132px] flex-row rounded-full p-1"
-      style={{ backgroundColor: colors.fill }}
+      className="flex-row"
+      style={{ width: 124, height: 44, padding: 3, borderRadius: 12, backgroundColor: colors.fill }}
     >
       {trackWidth > 0 ? (
         <Animated.View
           pointerEvents="none"
-          style={[{ position: 'absolute', top: 4, bottom: 4, left: 4, width: segmentWidth - 4, borderRadius: 999, backgroundColor: colors.accent }, pill]}
+          style={[{ position: 'absolute', top: 3, bottom: 3, left: 3, width: segmentWidth - 3, borderRadius: 9, backgroundColor: '#fff' }, pill]}
         />
       ) : null}
       {OPTIONS.map((o) => (
@@ -54,7 +53,7 @@ export function ModeToggle({ mode, onChange }: { mode: SetMode; onChange: (mode:
           }}
           className="flex-1 items-center justify-center"
         >
-          <Text className={`text-caption font-semibold ${mode === o.key ? 'text-black' : 'text-muted'}`}>{o.label}</Text>
+          <Text style={{ color: mode === o.key ? '#000' : colors.secondary, fontFamily: fonts.bold, fontSize: 14 }}>{o.label}</Text>
         </Pressable>
       ))}
     </View>

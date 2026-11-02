@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AttendanceProvider } from '../store/attendance';
 import { BodyProvider } from '../store/body';
 import { GymProvider } from '../store/gym';
+import { PhotosProvider } from '../store/photos';
 import { TimerProvider } from '../store/timer';
 
 const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
@@ -16,7 +17,9 @@ export async function renderWithApp(ui: ReactElement) {
       <GymProvider>
         <AttendanceProvider>
           <BodyProvider>
-            <TimerProvider>{ui}</TimerProvider>
+            <PhotosProvider>
+              <TimerProvider>{ui}</TimerProvider>
+            </PhotosProvider>
           </BodyProvider>
         </AttendanceProvider>
       </GymProvider>

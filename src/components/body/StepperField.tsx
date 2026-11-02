@@ -16,7 +16,7 @@ export function StepperField({ label, value, onStep }: { label: string; value: s
         <View className="min-w-[56px] items-center">
           <Text
             className="tabular-nums text-label"
-            style={{ fontFamily: roundedFont, fontSize: 28, lineHeight: 34, fontWeight: '700' }}
+            style={{ fontFamily: roundedFont, fontSize: 28, lineHeight: 34 }}
             accessibilityLabel={`${value} ${label}`}
           >
             {value}

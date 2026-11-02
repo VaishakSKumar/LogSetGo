@@ -6,6 +6,8 @@ import { buildDemoAttendance, buildDemoData } from '../lib/demo';
 import { useGym } from './gym';
 
 const STORAGE_KEY = 'minimalist-gym-tracker/attendance/v1';
+/** date → epoch ms of the punch-in. Kept apart from the marks, so backups and older data are untouched. */
+const PUNCH_KEY = 'minimalist-gym-tracker/attendance/punches/v1';
 
 interface AttendanceContextValue {
   ready: boolean;
@@ -14,6 +16,8 @@ interface AttendanceContextValue {
   /** what the calendar shows: marks plus days derived from logged sets */
   statuses: StatusMap;
   stats: AttendanceStats;
+  /** When today's Present was punched in (epoch ms), if it was punched in on this device. */
+  punchedAt: number | undefined;
   /** Set a date's status, or `null` to clear your mark. */
   setStatus(date: string, status: Status | null): void;
   /** Replaces every mark (used by backup import). */
@@ -46,6 +50,7 @@ function parseMarks(raw: string | null): Marks | null {
 export function AttendanceProvider({ children }: { children: ReactNode }) {
   const { data, realToday } = useGym();
   const [marks, setMarks] = useState<Marks>({});
+  const [punches, setPunches] = useState<Record<string, number>>({});
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -60,8 +65,15 @@ export function AttendanceProvider({ children }: { children: ReactNode }) {
       if (!stored && process.env.EXPO_PUBLIC_DEMO === '1') {
         stored = buildDemoAttendance(realToday, buildDemoData(realToday).sessions);
       }
+      let storedPunches: Record<string, number> = {};
+      try {
+        storedPunches = JSON.parse((await AsyncStorage.getItem(PUNCH_KEY)) ?? '{}');
+      } catch {
+        storedPunches = {};
+      }
       if (cancelled) return;
       if (stored) setMarks(stored);
+      setPunches(storedPunches);
       setReady(true);
     })();
     return () => {
@@ -74,6 +86,10 @@ export function AttendanceProvider({ children }: { children: ReactNode }) {
     if (ready) AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(marks)).catch(() => {});
   }, [marks, ready]);
 
+  useEffect(() => {
+    if (ready) AsyncStorage.setItem(PUNCH_KEY, JSON.stringify(punches)).catch(() => {});
+  }, [punches, ready]);
+
   const statuses = useMemo(() => resolveStatuses(marks, data.sessions), [marks, data.sessions]);
   const stats = useMemo(() => attendanceStats(statuses, realToday), [statuses, realToday]);
 
@@ -83,16 +99,24 @@ export function AttendanceProvider({ children }: { children: ReactNode }) {
       marks,
       statuses,
       stats,
+      punchedAt: punches[realToday],
       replaceMarks: (next) => setMarks(next),
-      setStatus: (date, status) =>
+      setStatus: (date, status) => {
         setMarks((m) => {
           const next = { ...m };
           if (status) next[date] = status;
           else delete next[date];
           return next;
-        }),
+        });
+        setPunches((p) => {
+          // Only today's Present is a punch-in; only the latest one matters.
+          if (status === 'present' && date === realToday) return p[date] ? p : { [date]: Date.now() };
+          if (status !== 'present' && p[date]) return {};
+          return p;
+        });
+      },
     }),
-    [ready, marks, statuses, stats],
+    [ready, marks, statuses, stats, punches, realToday],
   );
 
   return <AttendanceContext.Provider value={value}>{children}</AttendanceContext.Provider>;

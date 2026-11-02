@@ -1,38 +1,56 @@
+const plugin = require('tailwindcss/plugin');
+
+/** Barlow ships one family per weight: a native Text can't pick a weight from a single family. */
+const REGULAR = 'Barlow_400Regular';
+const MEDIUM = 'Barlow_500Medium';
+const SEMIBOLD = 'Barlow_600SemiBold';
+const BOLD = 'Barlow_700Bold';
+const DISPLAY = 'BarlowCondensed_800ExtraBold';
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./App.tsx', './src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
+  corePlugins: { fontWeight: false },
   theme: {
     extend: {
       colors: {
         base: '#000000',
-        surface: '#1C1C1E',
-        line: '#2C2C2E',
-        fill: '#2C2C2E',
+        surface: '#111311',
+        panel: '#141614',
+        raised: '#1C1F1C',
+        line: '#262926',
+        fill: '#232623',
         label: '#FFFFFF',
-        muted: '#8E8E93',
-        accent: '#30D158',
+        secondary: '#C7C7CC',
+        muted: '#A1A1A6',
+        accent: '#3DFF6E',
         warn: '#FFD60A',
-        danger: '#FF453A',
+        danger: '#FF5A4F',
         holiday: '#FFD60A',
-      },
-      // Strict type scale (SF Pro on iOS, system font elsewhere)
-      fontSize: {
-        display: ['34px', { lineHeight: '41px', letterSpacing: '-0.5px', fontWeight: '700' }],
-        h1: ['28px', { lineHeight: '34px', letterSpacing: '-0.5px', fontWeight: '700' }],
-        h2: ['17px', { lineHeight: '22px', letterSpacing: '-0.2px', fontWeight: '600' }],
-        /** the active workout-day name (SF Pro Display Semibold) */
-        dayname: ['20px', { lineHeight: '25px', letterSpacing: '-0.2px', fontWeight: '600' }],
-        num: ['20px', { lineHeight: '24px', fontWeight: '500' }],
-        body: ['15px', { lineHeight: '20px', fontWeight: '400' }],
-        /** session summary metrics (SF Pro Rounded, bold) */
-        metric: ['22px', { lineHeight: '28px', fontWeight: '700' }],
-        /** meta text and previous sets */
-        meta: ['13px', { lineHeight: '18px', fontWeight: '400' }],
-        caption: ['12px', { lineHeight: '16px', fontWeight: '400' }],
       },
       spacing: { 18: '72px' },
     },
   },
-  plugins: [],
+  plugins: [
+    // The type scale, here rather than in theme.fontSize so each step can also carry its font family.
+    plugin(({ addUtilities }) => {
+      addUtilities({
+        '.text-display': { fontFamily: DISPLAY, fontSize: '36px', lineHeight: '42px' },
+        '.text-h1': { fontFamily: DISPLAY, fontSize: '30px', lineHeight: '36px' },
+        '.text-h2': { fontFamily: SEMIBOLD, fontSize: '17px', lineHeight: '22px' },
+        '.text-dayname': { fontFamily: BOLD, fontSize: '15px', lineHeight: '20px' },
+        '.text-num': { fontFamily: BOLD, fontSize: '19px', lineHeight: '24px' },
+        '.text-body': { fontFamily: REGULAR, fontSize: '15px', lineHeight: '20px' },
+        '.text-metric': { fontFamily: DISPLAY, fontSize: '30px', lineHeight: '34px' },
+        '.text-meta': { fontFamily: REGULAR, fontSize: '13px', lineHeight: '18px' },
+        '.text-caption': { fontFamily: REGULAR, fontSize: '12px', lineHeight: '16px' },
+        // After the scale, so `text-h2 font-normal` takes this family.
+        '.font-normal': { fontFamily: REGULAR },
+        '.font-medium': { fontFamily: MEDIUM },
+        '.font-semibold': { fontFamily: SEMIBOLD },
+        '.font-bold': { fontFamily: BOLD },
+      });
+    }),
+  ],
 };

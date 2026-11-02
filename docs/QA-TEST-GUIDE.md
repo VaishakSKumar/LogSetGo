@@ -39,7 +39,7 @@ Include the platform, device, app version (Settings → About), steps, expected 
 
 ## 2. Navigation
 
-The top bar has three tabs and a Settings button. The app opens on **Attendance**.
+The floating bottom bar has three tabs: Attendance, Gym Progress, and Account. The open tab sits in a green circle. Settings is the sliders button at the top right of Attendance. The app opens on **Attendance**.
 
 | ID | Test | Expected |
 |---|---|---|
@@ -53,24 +53,23 @@ The top bar has three tabs and a Settings button. The app opens on **Attendance*
 
 ## 3. Attendance
 
-Tap a date to get the status sheet.
+The Attendance tab shows today's check-in card and a Monday-to-Sunday row. The calendar button, the streak count and any day in the row open the calendar popup.
 
-| Status | Colour | Badge | What happens |
-|---|---|---|---|
-| Present | Green | P | Marks the date and opens Gym Progress for that date |
-| Absent | Red | A | Marks the date and stays on the calendar |
-| Holiday | Yellow | H | Marks the date and stays on the calendar |
+| Status | Colour | What happens |
+|---|---|---|
+| Present | Green | Marks the date. From the punch sheet it also opens Gym Progress. |
+| Absent | Red | Marks the date and stays on the page |
+| Holiday | Yellow | Marks the date and stays on the page |
 
 ### Punch In card and weekly row
 
-The top of the Attendance tab has a Punch In card and a Monday-to-Sunday capsule row.
-
-| Day | Capsule |
+| Day | Row |
 |---|---|
 | Present | Solid green `#2CE573` |
 | Absent | Solid red `#FF4D4D` |
 | Holiday | Solid yellow `#FFC107` |
-| Not logged | Dark grey with a thin outline and grey text |
+| Not marked | Dark grey with grey text |
+| Today, not marked | Green outline |
 
 | ID | Test | Expected |
 |---|---|---|
@@ -79,28 +78,28 @@ The top of the Attendance tab has a Punch In card and a Monday-to-Sunday capsule
 | PUNCH-3 | 🟢 Start Workout | Today is Present and Gym Progress opens |
 | PUNCH-4 | 🔴 Mark Rest/Absent Day | Today is Absent and the sheet closes |
 | PUNCH-5 | 🟡 Mark Travel/Holiday | Today is Holiday and the sheet closes |
-| PUNCH-6 | Mark days with each status | Capsule colours match the table |
-| PUNCH-7 | Change today's choice | Card, capsule and calendar all update |
+| PUNCH-6 | Tap Absent, then Holiday, under the card | One tap marks each. The card fills with that status and shows Undo. |
+| PUNCH-7 | After punching in | Card shows the punch-in time and a running workout time |
+| PUNCH-8 | Undo punch-in, or Undo | The Punch In card and its buttons come back |
+| PUNCH-9 | Kill and reopen after punching in | Time and running count are kept |
+| PUNCH-10 | Mark days with each status | Row colours match the table |
 
-### Calendar and summary
+### Calendar popup and streak
 
-Summary card:
-
-- **Showed up:** the number of present days.
 - **Streak:** consecutive present days ending today. A Holiday pauses it. An Absent or an unmarked past day breaks it. An unmarked today doesn't break it.
-- **Attendance:** present ÷ (present + absent). Holidays are left out.
+- The popup counts Present, Absent and Holiday days.
 
 | ID | Test | Expected |
 |---|---|---|
-| ATT-1 | Mark today Present | Green P, Gym Progress opens, stats update |
-| ATT-2 | Mark today Absent | Red A, stays on calendar, rate drops |
-| ATT-3 | Mark today Holiday | Yellow H, rate unchanged |
-| ATT-4 | Open a future date | Only Holiday is available. Present and Absent are disabled and say why. |
-| ATT-5 | Set a status, reopen the date, tap Clear status | Status is removed and stats update |
+| ATT-1 | Weekly view | Big month and date, curved dial of days. Swipe it to move a day at a time. |
+| ATT-2 | Monthly view, Previous and Next month | Grid changes month and keeps its marks |
+| ATT-3 | Mark a date from the popup | Dot, counts, dashboard and row update |
+| ATT-4 | Open a future date | Only Holiday is available |
+| ATT-5 | Tap the selected status again | Status is removed and counts update |
 | ATT-6 | Three Present days, a Holiday, then Present | Streak keeps counting across the Holiday |
 | ATT-7 | Present, then an unmarked past day, then Present today | Streak restarts at 1 |
-| ATT-8 | Previous and Next month | Calendar changes month and keeps its marks |
-| ATT-9 | Log a set, then check an unmarked day that has sets | It shows as Present, with no Clear status option |
+| ATT-8 | Open September, then pick the 30th | Month and date titles fit on one line in both views |
+| ATT-9 | Log a set, then check that day | It shows as Present |
 | ATT-10 | Kill and reopen the app | Marks are still there |
 
 ---
@@ -109,30 +108,34 @@ Summary card:
 
 | Today's status | Gym Progress |
 |---|---|
-| Not marked | Locked: "Mark Present to start", with an Open Attendance button |
-| Absent or Holiday | Locked, and the screen names the status |
+| Not marked | "Punch in first", with a Go to Punch In button |
+| Absent | Full red page, with a Change today’s status button |
+| Holiday | Full yellow page, with a Change today’s status button |
 | Present | Open |
 
-Other dates can always be viewed.
+Other dates can always be viewed. Swipe left or right, use the arrows, or tap the date for the calendar. Today has the workout-day name at the top right; other dates have a Today link. Locked pages show neither the name nor the + button.
 
 | ID | Test | Expected |
 |---|---|---|
 | GATE-1 | Open Gym Progress with today unmarked | Lock screen shows |
-| GATE-2 | Tap Open Attendance | Moves to Attendance |
+| GATE-2 | Tap Go to Punch In | Moves to Attendance |
 | GATE-3 | Log a set, then mark today Absent | Logger locks. Logged data is not deleted. |
 | GATE-4 | Mark today Present again | Logged sets are back |
 
 ### Monthly photo check-in
 
-The first time Gym Progress opens for today in a new calendar month, a full-screen check-in blocks the workout. It shows last month's photo on the left and the new photo on the right.
+The first time Gym Progress opens for today in a new calendar month, a full-screen check-in appears. Skip for now opens the workout, and it does not ask again until next month. Account adds or replaces the photo any time. It shows last month's photo on the left and the new photo on the right.
 
 Allowed: GIF, JPG, PNG and WebP, up to 10 MB. Photos are not in backups.
 
 | ID | Test | Expected |
 |---|---|---|
-| PHOTO-1 | First workout of the month | Gate shows and the logger can't be reached |
+| PHOTO-1 | First workout of the month | Check-in shows with Skip for now |
+| PHOTO-1a | Tap Skip for now, kill and reopen the app | Workout opens and the check-in does not return this month |
+| PHOTO-1b | Account → Add monthly check-in photo → save | Card changes to three months with Replace |
+| PHOTO-1c | Account → Replace → save | The new photo shows. There is still one photo this month. |
 | PHOTO-2 | No earlier photo | Left slot says "No earlier photo yet" |
-| PHOTO-3 | Take photo, allow the camera | Photo shows on the right. Save and start workout is enabled. |
+| PHOTO-3 | Take photo, allow the camera | Photo shows on the right. Save photo is enabled. |
 | PHOTO-4 | Deny camera permission | Clear message, and Choose a file still works |
 | PHOTO-5 | Choose a PDF, DOCX or video | Red warning, nothing saved, gate stays |
 | PHOTO-6 | Choose an 11 MB image | "Too big" warning, gate stays |
@@ -338,7 +341,7 @@ Weekly goal: 3 workouts a week.
 
 ---
 
-## 12. BMI & Weight
+## 12. Account, BMI and weight
 
 Valid ranges: weight 20 to 400 kg, height 100 to 250 cm.
 
@@ -346,16 +349,16 @@ BMI = kg ÷ m². The category uses the one-decimal value shown, so 24.96 reads 2
 
 | BMI | Category | Colour |
 |---|---|---|
-| Under 18.5 | Underweight | Red |
-| 18.5 to 24.9 | Normal Weight | Green |
-| 25.0 to 29.9 | Overweight | Red |
+| Under 18.5 | Underweight | Grey |
+| 18.5 to 24.9 | Healthy | Green |
+| 25.0 to 29.9 | Overweight | Yellow |
 | 30.0 or more | Obese | Red |
 
-Change colours depend on the effect, not the direction: toward Normal is green, further away is red, within the same band is grey.
+Change colours depend on the effect, not the direction: toward Healthy is green, further away is red, within the same band is grey.
 
 | ID | Test | Expected |
 |---|---|---|
-| BMI-1 | 170 cm and 70 kg | BMI 24.2, Normal Weight |
+| BMI-1 | 170 cm and 70 kg | BMI 24.2, Healthy |
 | BMI-2 | 170 cm and 85 kg | BMI 29.4, Overweight, and +15 kg shows |
 | BMI-3 | Enter 5 kg | Save is blocked and the valid range shows |
 | BMI-4 | Save without changing the weight | Blocked with "No change to save" |
@@ -363,6 +366,36 @@ Change colours depend on the effect, not the direction: toward Normal is green, 
 | BMI-6 | Hold the stepper | Value repeats |
 | BMI-7 | History → Edit → delete | Entry goes and the trend updates |
 | BMI-8 | Reopen the next day | Weight stays, with no daily prompt |
+| GOAL-1 | Type goal 70 at 170 cm and 85 kg | "BMI at goal: 24.2, Healthy", "15 kg to lose" |
+| GOAL-2 | Type 12 or 400 | "Enter a weight from 30 to 300 kg", old goal kept |
+| GOAL-3 | Goal equal to your weight | "You have reached your goal" |
+| STAT-1 | Gym Attendance with nothing marked | 0 days, "No days marked", dash in the gauge |
+| STAT-2 | Mark 3 of 5 days this week | Bar shows 60%, "3 of 5 days done, 2 to go" |
+| STAT-3 | Tap that pill, choose 3 | Goal changes and shows "goal reached" |
+| STAT-4 | Month arrows | Stop at the first marked month and at this month |
+| WEIGHT-1 | Weight Progress with no weights | "Log your first weight to start your chart." |
+| WEIGHT-2 | 1 month, 3 months, All | Chart and tiles change. Tapping a point updates the readout. |
+| WEIGHT-3 | Set a goal | Dashed goal line, inside the chart scale |
+
+### New workout plan
+
+The + beside the day name opens it. Saving a plan logs nothing.
+
+| ID | Test | Expected |
+|---|---|---|
+| PLAN-1 | + → Add manually | Info screen, then the builder |
+| PLAN-2 | Don't show this again, reopen | Info screen skipped |
+| PLAN-3 | Builder with no name or no exercise | Save plan disabled |
+| PLAN-4 | + → Import from a file → .txt, .csv or .xlsx | Review list with matches ticked |
+| PLAN-5 | A name not in the list | Yellow "Not in our list", Save disabled until Add as new |
+| PLAN-6 | Choose a PDF | "That file can't be used" |
+| PLAN-7 | Choose an old .xls | Message asks for .xlsx |
+| PLAN-8 | Choose a file over 2 MB | "That file is too big" |
+| PLAN-9 | Choose an empty file, or one with no exercises | Clear message, nothing saved |
+| PLAN-10 | Tap a saved plan | Exercises open with sets and reps filled in, weight empty, last weight grey |
+| PLAN-11 | Close without ticking | "To do today" lists them. Summary, stats and PRs don't change. |
+| PR-1 | Log a heavier best set than every earlier week | Banana-yellow PR dot, readout says "new PR" |
+| PR-2 | First week of an exercise | Plain dot, never PR |
 
 ---
 
@@ -409,12 +442,7 @@ Do not raise these as bugs. They are planned or known.
 
 | Item | Status |
 |---|---|
-| Calendar popup with Weekly and Monthly views | Redesign, not built |
-| GIF and image uploads for exercise form media | Redesign, not built |
-| Swiping dates, changing status from Gym Progress | Redesign, not built |
-| Full-screen Absent and Holiday screens | Redesign, not built |
 | Login and OTP | Hidden until after the beta test |
 | Logging sets on past days | Not allowed today |
-| 0 kg in Today's workout and This week on no-weight days | Known |
-| "Logging <date>" chip on read-only past dates | Known |
+| 0 kg in Today's workout on no-weight days | Known |
 | A few imported exercises under the wrong body part | Known source-data issue. Report only obvious ones. |

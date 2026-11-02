@@ -100,13 +100,15 @@ Restart Expo. On a first launch with nothing stored, the app seeds five weeks of
 App.tsx                  Providers, tab shell, Android back button
 index.ts                 Entry point
 src/
-  screens/               CalendarScreen, WorkoutScreen, BodyScreen
+  screens/               CalendarScreen, WorkoutScreen, AccountScreen
+    account/             BMI, Gym Attendance and Weight Progress pages
   components/            Shared UI: search, set table, dock, rest banner, charts
-    attendance/          Date tile, status sheet, analytics card
-    body/                Weight hero, BMI gauge, weight and height sheets
+    attendance/          Calendar popup, status sheet, day status buttons
+    body/                Weight and height sheets, weight history
+    plans/               New workout plan flow: choose, info, build, import
     session/             Recorder drawer, summary card, exercise cards, swipe-to-delete
     sheets/              Settings, routines, stats, tools, goals, set details, day names
-  store/                 Providers: gym, attendance, body, timer
+  store/                 Providers: gym, attendance, body, photos, timer
     reducer.ts           Pure workout state changes
   lib/                   Pure logic, most of it tested
   data/
@@ -186,18 +188,25 @@ Only names, body parts and equipment are used. The dataset's images and videos a
 
 ## 7. Redesign work
 
-The redesign is in progress. The mockups are on the **[LogSetGo Redesign canvas](https://claude.ai/artifact/AuRoVLBUuY4jBTVCh9Za9c)**. The owner must share the link with you, because it is private by default.
+The app is built to the approved **[LogSetGo Redesign canvas](https://claude.ai/artifact/AuRoVLBUuY4jBTVCh9Za9c)**. The owner must share the link with you, because it is private by default. When the app and a board disagree on looks, the board wins.
 
-**Built so far:** the Punch In card, status sheet and 7-day capsule row on the Attendance tab, form media and cues, the full-screen rest overlay, and the monthly photo gate. The canvas's full-screen Absent and Holiday screens, date swiping and calendar popup are not built.
+Every board below is built except the mobile number and OTP login. The Settings, Routines, Stats and Tools sheets have no boards; they use the same colours and fonts.
 
 | Canvas board | Screen | Notes |
 |---|---|---|
-| Dashboard, DashboardPunched | New home screen | Punch In / Start Workout card, weekly capsule streak |
+| Dashboard, DashboardPunched | Attendance tab | Punch In / Start Workout card, weekly capsule streak |
 | Calendar, CalendarMonthly | Attendance popup | Opened from the streak count. Weekly and Monthly views. |
 | GymStart | Gym Progress day view | Swipe between dates. Tap the date for the calendar. |
-| GymRecorder, GymProgress | Recorder and logged day | Evolves the current drawer and feed |
+| GymRecorder, GymProgress | Recorder and logged day | The recorder merges GymRecorder and GymSession into one drawer |
 | GymSession, GymSessionRest, GymSessionAdd, GymSessionVideo | Active workout session | Form media, cues, set table, 60-second rest overlay |
-| GymLocked, GymHoliday, GymNotMarked | Full-screen Absent, Holiday and not-marked states | Replaces the current lock screen |
+| GymLocked, GymHoliday, GymNotMarked | Full-screen Absent, Holiday and not-marked states | `PresenceGate` for today, `WorkoutScreen` for other dates |
+| MonthlyCheckin | Monthly check-in | Not forced. Skip for now, or add it any time from Account. One photo a month. |
+| Account, AccountPhoto | Account tab | Replaces BMI & Weight. No login. |
+| BMI | BMI page | Target goal weight, 30 to 300 kg |
+| StatsAttendance | Gym Attendance page | Tap the "days done" pill to change the weekly goal (1 to 7, default 5) |
+| StatsWeight | Weight Progress page | Weight history lives here too |
+| PlanNew, PlanInfo, PlanInfoFile, PlanBuilder, PlanImport, PlanImportReview | New workout plan | The + on Gym Progress. Files: .xlsx, CSV, .txt up to 2 MB. Old .xls files get a message asking for .xlsx. |
+| GymSession (Week by week) | Graph below Add set | Best set each week. Banana-yellow PR dot when a week beats every earlier one. |
 | Accounts page: Main, Otp | Mobile number and OTP login | **Do not build yet.** Accounts come after the beta test. |
 
 Agreed product decisions:
@@ -206,6 +215,7 @@ Agreed product decisions:
 - Past dates can have their status changed, and attendance updates with it.
 - Absent and Holiday are full-colour screens with no empty space. Holiday is yellow, Absent is red.
 - If an exercise has no media, the user can paste a YouTube link that plays in the app, or upload a GIF or image.
+- A saved plan is planned, not done. Tapping it fills in the exercises, sets and reps. Only ticked sets count toward volume, stats and PRs.
 - Uploads allow GIF, JPG, PNG and WebP only, up to 10 MB. PDF, DOCX and everything else are rejected, and the formats are shown on screen.
 
 Things to plan for:
@@ -219,7 +229,6 @@ Open decisions, to be confirmed with the owner before building:
 1. Does the recorder drawer merge into the active session screen?
 2. Can sets be logged on past days? Today the app does not allow it.
 3. Should the app warn before changing the status of a day with a saved workout?
-4. What is the BMI & Weight redesign? It has not been designed yet.
 
 ---
 

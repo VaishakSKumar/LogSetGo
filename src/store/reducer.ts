@@ -167,7 +167,8 @@ export function reducer(state: AppData, action: Action): AppData {
         if (exercises[item.exerciseId]?.length) continue;
         const mode = action.modes[item.exerciseId] ?? 'reps';
         const rows: SetRow[] = [];
-        for (let i = 0; i < Math.max(1, item.sets); i++) rows.push(newRow(rows, mode));
+        // A plan is only a plan: reps come filled in, but nothing counts until the set is ticked.
+        for (let i = 0; i < Math.max(1, item.sets); i++) rows.push({ ...newRow(rows, mode), reps: mode === 'reps' ? (item.reps ?? null) : null });
         exercises[item.exerciseId] = rows;
       }
       return {

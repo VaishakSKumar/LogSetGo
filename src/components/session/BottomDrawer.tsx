@@ -10,8 +10,6 @@ const SNAP = 0.9;
 /** Pull further than this (px), or flick faster than DISMISS_VELOCITY, and the drawer closes. */
 const DISMISS_DISTANCE = 120;
 const DISMISS_VELOCITY = 0.9;
-/** zinc-600 */
-const HANDLE = '#52525B';
 
 interface Props {
   visible: boolean;
@@ -89,12 +87,11 @@ export function BottomDrawer({ visible, onClose, children, footer, overlays, lab
           style={[
             {
               height,
-              backgroundColor: colors.base,
-              borderColor: colors.line,
-              borderWidth: 1,
-              borderBottomWidth: 0,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
+              backgroundColor: colors.panel,
+              borderTopColor: colors.border,
+              borderTopWidth: 1,
+              borderTopLeftRadius: 28,
+              borderTopRightRadius: 28,
               overflow: 'hidden',
             },
             panel,
@@ -102,12 +99,12 @@ export function BottomDrawer({ visible, onClose, children, footer, overlays, lab
         >
           {/* The drag zone: the handle plus generous padding so it's easy to grab. */}
           <View {...pan.panHandlers} style={[{ alignItems: 'center', paddingTop: 10, paddingBottom: 14 }, Platform.OS === 'web' ? ({ touchAction: 'none', cursor: 'grab' } as never) : null]}>
-            <View accessibilityLabel="Drag down to close" style={{ width: 36, height: 5, borderRadius: 3, backgroundColor: HANDLE }} />
+            <View accessibilityLabel="Drag down to close" style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.handle }} />
           </View>
 
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24, gap: 16 }}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, gap: 10 }}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
@@ -116,7 +113,7 @@ export function BottomDrawer({ visible, onClose, children, footer, overlays, lab
           </ScrollView>
 
           {footer ? (
-            <View style={{ borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: colors.base, paddingBottom: Math.max(insets.bottom, 12) }}>{footer}</View>
+            <View style={{ backgroundColor: colors.panel, paddingBottom: Math.max(insets.bottom, 14) }}>{footer}</View>
           ) : null}
         </Animated.View>
 

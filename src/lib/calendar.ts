@@ -25,6 +25,19 @@ export const monthTitle = (key: string) => {
   return `${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
 };
 
+export const monthName = (key: string) => MONTHS_LONG[parseKey(key).getMonth()];
+export const weekdayLong = (key: string) => DAYS_LONG[parseKey(key).getDay()];
+export const weekdayShort = (key: string) => DAYS_LONG[parseKey(key).getDay()].slice(0, 3);
+
+/** "6 November" */
+export const dayMonthLong = (key: string) => `${parseKey(key).getDate()} ${monthName(key)}`;
+
+/** "Friday, 6 Nov" */
+export const dayMonthShort = (key: string) => `${weekdayLong(key)}, ${parseKey(key).getDate()} ${monthName(key).slice(0, 3)}`;
+
+/** "Fri, 6 Nov" */
+export const compactDate = (key: string) => `${weekdayShort(key)}, ${parseKey(key).getDate()} ${monthName(key).slice(0, 3)}`;
+
 /** "Monday, September 21" */
 export const longDate = (key: string) => {
   const d = parseKey(key);

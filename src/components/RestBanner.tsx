@@ -15,7 +15,7 @@ import Animated, {
 import { haptic } from '../lib/haptics';
 import { fmt, isWarning, progressOf, remainingMs } from '../lib/timer';
 import { useNow, useTimer } from '../store/timer';
-import { colors, motion, roundedFont } from '../theme';
+import { colors, fonts, motion } from '../theme';
 import { PauseIcon, PlayIcon } from './Icons';
 import { PillButton, RoundButton } from './ui';
 
@@ -75,20 +75,20 @@ function Banner() {
     <Animated.View entering={FadeInDown.duration(motion.duration)} exiting={FadeOutDown.duration(motion.duration)} style={card}>
       <Animated.View
         pointerEvents="none"
-        style={[{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, borderRadius: 24, backgroundColor: colors.accent }, glow]}
+        style={[{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, borderRadius: 18, backgroundColor: colors.accent }, glow]}
       />
       <View
         style={{
-          borderRadius: 24,
+          borderRadius: 18,
           borderWidth: 1,
           borderColor: done ? colors.accentBorder : colors.line,
-          backgroundColor: colors.surface,
+          backgroundColor: colors.panel,
           padding: 12,
         }}
       >
         <View className="flex-row items-center justify-between">
           <View className="flex-1 pr-2">
-            <Text className="text-caption uppercase tracking-wider text-muted/70" numberOfLines={1}>
+            <Text className="text-meta text-secondary" numberOfLines={1}>
               {caption}
             </Text>
             <Animated.Text
@@ -96,11 +96,9 @@ function Banner() {
               accessibilityLabel={done ? 'Rest over' : `${fmt(seconds)} remaining`}
               style={[
                 {
-                  fontFamily: roundedFont,
-                  fontSize: 34,
-                  lineHeight: 41,
-                  letterSpacing: -0.5,
-                  fontWeight: '700',
+                  fontFamily: fonts.display,
+                  fontSize: 36,
+                  lineHeight: 40,
                   fontVariant: ['tabular-nums'],
                 },
                 paused ? { color: colors.muted } : timeColor,

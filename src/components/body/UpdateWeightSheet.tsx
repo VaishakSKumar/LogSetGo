@@ -7,11 +7,10 @@ import { haptic } from '../../lib/haptics';
 import { fmtDelta, fmtWeight, fromDisplay, toDisplay } from '../../lib/units';
 import { useBody } from '../../store/body';
 import { useGym } from '../../store/gym';
-import { colors, roundedFont } from '../../theme';
+import { colors, roundedFont, toneColor } from '../../theme';
 import type { Unit } from '../../types';
 import { Sheet } from '../Sheet';
 import { Caption, HoldButton, PillButton } from '../ui';
-import { toneColor } from './HeroCard';
 
 const clampKg = (kg: number) => Math.min(MAX_KG, Math.max(MIN_KG, kg));
 
@@ -118,7 +117,7 @@ export function UpdateWeightSheet({ visible, onClose }: { visible: boolean; onCl
               accessibilityLabel={`Weight in ${unit}`}
               className="text-center text-label"
               style={[
-                { width: 124, fontFamily: roundedFont, fontSize: 34, lineHeight: 41, fontWeight: '700', letterSpacing: -0.5, padding: 0, outlineStyle: 'none' } as never,
+                { width: 124, fontFamily: roundedFont, fontSize: 34, lineHeight: 41, letterSpacing: -0.5, padding: 0, outlineStyle: 'none' } as never,
               ]}
             />
             <Text className="ml-1 text-h2 text-muted">{unit}</Text>

@@ -5,8 +5,8 @@ export type Status = 'present' | 'absent' | 'holiday';
 
 /** Strict badge + color rules for every date tile. */
 export const STATUS_META: Record<Status, { label: string; letter: string; color: string }> = {
-  present: { label: 'Present', letter: 'P', color: '#30D158' },
-  absent: { label: 'Absent', letter: 'A', color: '#FF453A' },
+  present: { label: 'Present', letter: 'P', color: '#3DFF6E' },
+  absent: { label: 'Absent', letter: 'A', color: '#FF5A4F' },
   holiday: { label: 'Holiday', letter: 'H', color: '#FFD60A' },
 };
 
@@ -14,7 +14,7 @@ export const STATUSES: Status[] = ['present', 'absent', 'holiday'];
 
 /** The 7-day capsule row. */
 export const CAPSULE_COLORS: Record<Status, string> = { present: '#2CE573', absent: '#FF4D4D', holiday: '#FFC107' };
-export const CAPSULE_NEUTRAL = { background: '#1C1C1E', border: '#3A3A3C', text: '#8E8E93' };
+export const CAPSULE_NEUTRAL = { background: '#2A2D2A', border: '#3A3D3A', text: '#C7C7CC' };
 
 /**
  * Holidays are excused days, so by default they stay out of the attendance-rate denominator.

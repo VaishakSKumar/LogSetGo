@@ -1,14 +1,14 @@
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatDuration } from '../lib/duration';
 import { haptic } from '../lib/haptics';
 import { resolveSet } from '../lib/progress';
 import { fmtWeight, fromDisplay, roundDisplay, toDisplay } from '../lib/units';
-import { colors } from '../theme';
+import { colors, fonts } from '../theme';
 import type { Ghost, LoadKind, SetMode, SetRow, Unit } from '../types';
-import { MinusIcon, PlusIcon } from './Icons';
-import { Num, PillButton, RoundButton } from './ui';
+import { PlusIcon } from './Icons';
+import { PillButton } from './ui';
 
 /** One tap of the duration stepper. */
 const DURATION_STEP_SECONDS = 5;
@@ -29,21 +29,17 @@ interface LogDockProps {
   compact?: boolean;
 }
 
-function Stepper({ label, text, ghosted, onMinus, onPlus }: { label: string; text: string; ghosted: boolean; onMinus: () => void; onPlus: () => void }) {
+function Stepper({ label, text, onMinus, onPlus }: { label: string; text: string; onMinus: () => void; onPlus: () => void }) {
+  const sign = (char: string, name: string, onPress: () => void) => (
+    <Pressable accessibilityRole="button" accessibilityLabel={`${name} ${label}`} onPress={onPress} className="items-center justify-center active:opacity-60" style={{ width: 48, height: 52 }}>
+      <Text style={{ color: '#fff', fontFamily: fonts.medium, fontSize: 26 }}>{char}</Text>
+    </Pressable>
+  );
   return (
-    <View className="flex-1 items-center">
-      <Text className="mb-1 text-caption uppercase tracking-wider text-muted/60">{label}</Text>
-      <View className="flex-row items-center gap-2">
-        <RoundButton label={`Decrease ${label}`} onPress={onMinus}>
-          <MinusIcon size={18} color={colors.label} />
-        </RoundButton>
-        <View className="min-w-[60px] items-center">
-          <Num className={ghosted ? 'text-muted/60' : ''}>{text}</Num>
-        </View>
-        <RoundButton label={`Increase ${label}`} onPress={onPlus}>
-          <PlusIcon size={18} color={colors.label} />
-        </RoundButton>
-      </View>
+    <View className="flex-1 flex-row items-center justify-between" style={{ height: 52, borderRadius: 12, backgroundColor: colors.fill }}>
+      {sign('−', 'Decrease', onMinus)}
+      <Text style={{ color: colors.secondary, fontFamily: fonts.semibold, fontSize: 13 }}>{text}</Text>
+      {sign('+', 'Increase', onPlus)}
     </View>
   );
 }
@@ -78,23 +74,16 @@ export function LogDock({ activeRow, activeIndex, ghost, unit, step, mode, load 
   if (compact && !activeRow) return null;
 
   return (
-    <View className="px-4 pt-3" style={{ paddingBottom: compact ? 0 : Math.max(insets.bottom, 12) + 4 }}>
+    <View className={compact ? 'px-4 pt-2' : 'px-4 pt-3'} style={{ paddingBottom: compact ? 0 : Math.max(insets.bottom, 12) + 4 }}>
       {activeRow ? (
         <>
-          <View className={compact ? 'flex-row' : 'mb-3 flex-row'}>
+          <View className={compact ? 'flex-row' : 'mb-3 flex-row'} style={{ gap: 8 }}>
             {load === 'none' ? null : (
-              <Stepper
-                label={load === 'extra' ? `Extra ${unit}` : unit}
-                text={!weightKg ? '–' : fmtWeight(weightKg, unit)}
-                ghosted={activeRow.weight == null}
-                onMinus={() => stepWeight(-1)}
-                onPlus={() => stepWeight(1)}
-              />
+              <Stepper label={load === 'extra' ? `extra ${unit}` : unit} text={`${step} ${unit}`} onMinus={() => stepWeight(-1)} onPlus={() => stepWeight(1)} />
             )}
             <Stepper
-              label={mode === 'time' ? 'Time' : 'Reps'}
-              text={reps == null ? '–' : mode === 'time' ? formatDuration(reps) : String(reps)}
-              ghosted={activeRow.reps == null}
+              label={mode === 'time' ? 'time' : 'reps'}
+              text={mode === 'time' ? `${DURATION_STEP_SECONDS} sec` : '1 rep'}
               onMinus={() => stepReps(-1)}
               onPlus={() => stepReps(1)}
             />

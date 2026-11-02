@@ -1,75 +1,85 @@
-import { Text, View } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { haptic } from '../../lib/haptics';
 import { fmt, isWarning, progressOf, remainingMs } from '../../lib/timer';
 import { useNow, useTimer } from '../../store/timer';
-import { colors, roundedFont } from '../../theme';
-import { PillButton } from '../ui';
+import { colors, fonts } from '../../theme';
 
-const SIZE = 220;
-const STROKE = 10;
-const RADIUS = (SIZE - STROKE) / 2;
+const BOX = 280;
+const STROKE = 12;
+const RADIUS = 128;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 /** The full-screen rest countdown shown the moment a set is checked off. */
-export function RestOverlay() {
+export function RestOverlay({ nextUp }: { nextUp?: string }) {
   const { timer, controls } = useTimer();
+  const { width } = useWindowDimensions();
   const running = timer.status === 'running';
   const now = useNow(running, 100);
   if (timer.status === 'idle') return null;
 
   const done = timer.status === 'done';
   const seconds = done ? 0 : Math.ceil(remainingMs(timer, now) / 1000);
-  const ring = isWarning(timer, now) ? colors.warn : colors.accent;
+  const tint = isWarning(timer, now) ? colors.warn : colors.accent;
+  const size = Math.min(BOX, width - 48);
 
   return (
     <View
       accessibilityLabel="Rest countdown"
-      className="items-center justify-center gap-6 px-6"
-      style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0,0,0,0.92)' }}
+      className="items-center justify-center"
+      style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, padding: 24, backgroundColor: 'rgba(0,0,0,0.94)' }}
     >
-      <Text className="text-h2 text-label">{done ? 'Rest over' : 'Rest'}</Text>
-      <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' }}>
-        <Svg width={SIZE} height={SIZE} style={{ position: 'absolute' }}>
-          <Circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} stroke={colors.fill} strokeWidth={STROKE} fill="none" />
+      <Text style={{ color: '#fff', fontFamily: fonts.display, fontSize: 44, lineHeight: 48, textTransform: 'uppercase' }}>{done ? 'Rest over' : 'Rest Timer'}</Text>
+      <View className="items-center justify-center" style={{ width: size, height: size, marginTop: 24 }}>
+        <Svg width={size} height={size} viewBox={`0 0 ${BOX} ${BOX}`} style={{ position: 'absolute' }}>
+          <Circle cx={BOX / 2} cy={BOX / 2} r={RADIUS} stroke={colors.border} strokeWidth={STROKE} fill="none" />
           <Circle
-            cx={SIZE / 2}
-            cy={SIZE / 2}
+            cx={BOX / 2}
+            cy={BOX / 2}
             r={RADIUS}
-            stroke={ring}
+            stroke={tint}
             strokeWidth={STROKE}
             strokeLinecap="round"
             fill="none"
             strokeDasharray={CIRCUMFERENCE}
             strokeDashoffset={CIRCUMFERENCE * (1 - progressOf(timer, now))}
-            transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+            transform={`rotate(-90 ${BOX / 2} ${BOX / 2})`}
           />
         </Svg>
         <Text
           accessibilityRole="timer"
           accessibilityLabel={done ? 'Rest over' : `${fmt(seconds)} remaining`}
-          style={{ color: colors.label, fontFamily: roundedFont, fontSize: 64, fontWeight: '700', fontVariant: ['tabular-nums'] }}
+          style={{ color: tint, fontFamily: fonts.display, fontSize: seconds > 99 ? 104 : 136, fontVariant: ['tabular-nums'] }}
         >
-          {fmt(seconds)}
+          {seconds}
         </Text>
       </View>
-      <View className="flex-row gap-3">
-        {done ? (
-          <PillButton compact variant="white" label="Done" onPress={controls.skip} />
-        ) : (
-          <>
-            <PillButton
-              compact
-              label="+15s"
-              onPress={() => {
-                haptic.tap();
-                controls.addTime(15);
-              }}
-            />
-            <PillButton compact variant="white" label="Skip" onPress={controls.skip} />
-          </>
+      {nextUp ? <Text style={{ marginTop: 24, color: '#fff', fontFamily: fonts.semibold, fontSize: 17, lineHeight: 24, textAlign: 'center' }}>{nextUp}</Text> : null}
+      <View className="flex-row self-stretch" style={{ marginTop: 28, gap: 8 }}>
+        {done ? null : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="+15s"
+            onPress={() => {
+              haptic.tap();
+              controls.addTime(15);
+            }}
+            className="items-center justify-center active:opacity-70"
+            style={{ width: 96, height: 60, borderRadius: 14, backgroundColor: colors.control }}
+          >
+            <Text style={{ color: '#fff', fontFamily: fonts.bold, fontSize: 19 }}>+15s</Text>
+          </Pressable>
         )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={done ? 'Done' : 'Skip'}
+          onPress={controls.skip}
+          className="flex-1 items-center justify-center active:opacity-80"
+          style={{ height: 60, borderRadius: 14, backgroundColor: '#fff' }}
+        >
+          <Text style={{ color: '#000', fontFamily: fonts.bold, fontSize: 19 }}>{done ? 'Done' : 'Skip rest'}</Text>
+        </Pressable>
       </View>
     </View>
   );

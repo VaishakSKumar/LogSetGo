@@ -128,7 +128,7 @@ npm run qa:web      # PWA build: manifest, icons, service worker precache, sanit
 * [ ] The web build succeeds and its own checks pass (manifest, all icons, JS bundle, service worker version filled in).
 * [ ] Every native module call is guarded: `expo-haptics` and `Vibration` go through `src/lib/haptics.ts` (web no-op, `try/catch`); keep-awake and AsyncStorage calls `.catch(() => {})`.
 * [ ] No new dependency was added without `npx expo install` (SDK-compatible versions).
-* [ ] Layout respects safe areas: top inset handled once by `TopTabBar`, bottom inset by docks and scroll padding.
+* [ ] Layout respects safe areas: top inset handled once by each screen, bottom inset by docks and scroll padding.
 
 Not covered: real-device haptics, Android keyboard handling, and iOS `ui-rounded` font. Say these are untested unless you tested on a device.
 

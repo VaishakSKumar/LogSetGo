@@ -5,6 +5,7 @@ import {
   bmiOf,
   clampHeightCm,
   emptyBody,
+  isValidGoalKg,
   isValidKg,
   parseBody,
   withDeltas,
@@ -32,6 +33,8 @@ interface BodyContextValue {
     addWeight(kg: number): boolean;
     deleteEntry(id: string): void;
     setHeight(cm: number, unit: HeightUnit): void;
+    /** Sets the target goal weight, or clears it with null. Returns false if it is out of range. */
+    setGoal(kg: number | null): boolean;
     /** Replaces the whole weight log and height (used by backup import). */
     replaceAll(next: BodyData): void;
   };
@@ -97,6 +100,11 @@ export function BodyProvider({ children }: { children: ReactNode }) {
         deleteEntry: (id) => setData((d) => ({ ...d, entries: d.entries.filter((e) => e.id !== id) })),
         replaceAll: (next) => setData(next),
         setHeight: (cm, unit) => setData((d) => ({ ...d, heightCm: clampHeightCm(cm), heightUnit: unit })),
+        setGoal: (kg) => {
+          if (kg != null && !isValidGoalKg(kg)) return false;
+          setData((d) => ({ ...d, goalKg: kg }));
+          return true;
+        },
       },
     };
   }, [data, ready]);

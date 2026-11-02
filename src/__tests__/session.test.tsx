@@ -20,7 +20,7 @@ const press = async (label: string | RegExp) => fireEvent.press((await screen.fi
 /** 4 × 2.5 kg = 10 kg for 5 reps on set 1: 50 kg of volume. */
 async function logSetOfFifty() {
   for (let i = 0; i < 4; i++) await press('Increase kg');
-  for (let i = 0; i < 5; i++) await press('Increase Reps');
+  for (let i = 0; i < 5; i++) await press('Increase reps');
   await press(/^Log set 1/);
   await screen.findByLabelText('Undo set 1');
 }
@@ -36,7 +36,6 @@ describe('Gym Progress states', () => {
     await renderWithApp(<WorkoutScreen />);
     await screen.findByText('What are you training?');
     expect(screen.getByLabelText('Exercise search')).toBeTruthy();
-    expect(screen.getByText('No exercises logged for today. Start by typing an exercise above.')).toBeTruthy();
     expect(screen.queryByLabelText('Add exercise')).toBeNull();
     expect(screen.queryByLabelText(/^Total volume/)).toBeNull();
     expect(screen.queryByLabelText('Done')).toBeNull(); // the drawer is closed
@@ -155,7 +154,7 @@ describe('Gym Progress states', () => {
     await press('More options for Barbell Bench Press');
     await press('Delete exercise');
     await press('Delete');
-    await screen.findByText('No exercises logged for today. Start by typing an exercise above.');
+    await screen.findByText('What are you training?');
     expect(screen.queryByLabelText('Add exercise')).toBeNull();
   });
 });

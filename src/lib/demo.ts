@@ -89,5 +89,5 @@ export function buildDemoBody(todayKey: string): BodyData {
     const date = addDays(todayKey, -(kgs.length - 1 - i) * 5 - 3);
     return { id: `demo${i}`, date, at: parseKey(date).getTime() - 4 * 3_600_000 + i * 60_000, kg };
   });
-  return { heightCm: 178, heightUnit: 'cm', entries };
+  return { heightCm: 178, heightUnit: 'cm', entries, goalKg: 75 };
 }

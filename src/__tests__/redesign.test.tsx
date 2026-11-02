@@ -11,7 +11,7 @@ import { useGym } from '../store/gym';
 import { renderWithApp } from './helpers';
 
 const today = dateKey();
-const card = () => screen.getByLabelText(/^(Punch In|Start Workout|Rest day|Travel or holiday)\./);
+const card = () => screen.getByLabelText('Punch In / Start Workout');
 
 function WithBench() {
   const { ready, actions } = useGym();
@@ -25,24 +25,25 @@ function WithBench() {
 describe('Punch In sheet', () => {
   it('opens the sheet instead of marking today, and each option does its job', async () => {
     const onOpenWorkout = jest.fn();
-    await renderWithApp(<CalendarScreen onOpenWorkout={onOpenWorkout} />);
-    await screen.findByText('Showed up');
+    await renderWithApp(<CalendarScreen onOpenWorkout={onOpenWorkout} onSettings={jest.fn()} />);
+    await screen.findByLabelText('Punch In / Start Workout');
 
     await fireEvent.press(card());
     await screen.findByLabelText('🔴 Mark Rest/Absent Day');
-    expect(screen.getByLabelText('Monday: Not logged')).toBeTruthy();
     expect(onOpenWorkout).not.toHaveBeenCalled();
 
     await fireEvent.press(screen.getByLabelText('🔴 Mark Rest/Absent Day'));
-    await screen.findByText('0 of 1 days');
+    await screen.findByText('Streak back to 0');
     expect(onOpenWorkout).not.toHaveBeenCalled();
 
-    await fireEvent.press(card());
+    await fireEvent.press(screen.getByLabelText('Undo'));
+    await fireEvent.press(await screen.findByLabelText('Punch In / Start Workout'));
     await fireEvent.press(await screen.findByLabelText('🟡 Mark Travel/Holiday'));
-    await screen.findByText('0 of 0 days');
+    await screen.findByText('Planned rest, streak kept');
     expect(onOpenWorkout).not.toHaveBeenCalled();
 
-    await fireEvent.press(card());
+    await fireEvent.press(screen.getByLabelText('Undo'));
+    await fireEvent.press(await screen.findByLabelText('Punch In / Start Workout'));
     await fireEvent.press(await screen.findByLabelText('🟢 Start Workout'));
     await waitFor(() => expect(onOpenWorkout).toHaveBeenCalledWith(today));
   });
@@ -52,7 +53,7 @@ describe('Rest overlay', () => {
   it('appears when a set is checked, and +15s and Skip work', async () => {
     await renderWithApp(<WithBench />);
     await screen.findAllByLabelText('Log set 1');
-    for (let i = 0; i < 5; i++) await fireEvent.press(screen.getByLabelText('Increase Reps'));
+    for (let i = 0; i < 5; i++) await fireEvent.press(screen.getByLabelText('Increase reps'));
     await fireEvent.press(screen.getAllByLabelText('Log set 1')[0]);
 
     await screen.findByLabelText('Rest countdown');
@@ -69,9 +70,10 @@ describe('Form guide', () => {
     await renderWithApp(<WithBench />);
     await screen.findByText('• Keep elbows tucked');
 
-    await fireEvent.changeText(screen.getByLabelText('YouTube link'), 'https://example.com/video');
+    await fireEvent.press(screen.getByLabelText('Paste YouTube link'));
+    await fireEvent.changeText(await screen.findByLabelText('YouTube link'), 'https://example.com/video');
     await fireEvent.press(screen.getByLabelText('Add video'));
-    await screen.findByText('That isn’t a YouTube link.');
+    await screen.findByText('That is not a YouTube video link.');
 
     await fireEvent.changeText(screen.getByLabelText('YouTube link'), 'https://youtu.be/dQw4w9WgXcQ');
     await fireEvent.press(screen.getByLabelText('Add video'));
