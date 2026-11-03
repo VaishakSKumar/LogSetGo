@@ -4,6 +4,7 @@ import { haptic } from '../../lib/haptics';
 import { exerciseCount, planDetail } from '../../lib/plans';
 import { useGym } from '../../store/gym';
 import { colors, fonts } from '../../theme';
+import { CloseIcon } from '../Icons';
 
 const title = { color: colors.secondary, fontFamily: fonts.semibold, fontSize: 14, lineHeight: 20 };
 
@@ -55,22 +56,37 @@ export function TodaysPlan({ date }: { date: string }) {
         const name = byId.get(id)?.name ?? id;
         const detail = planDetail(rows.length, rows[0].reps);
         return (
-          <Pressable
-            key={id}
-            accessibilityRole="button"
-            accessibilityLabel={`${name}, ${detail}`}
-            onPress={() => {
-              haptic.tap();
-              actions.selectExercise(id);
-            }}
-            className="flex-row items-center justify-between active:opacity-60"
-            style={{ height: 52, gap: 12, borderBottomWidth: 1, borderBottomColor: colors.navLine }}
-          >
-            <Text className="shrink" numberOfLines={1} style={{ color: '#fff', fontFamily: fonts.semibold, fontSize: 16 }}>
-              {name}
-            </Text>
-            <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14, fontVariant: ['tabular-nums'] }}>{detail}</Text>
-          </Pressable>
+          <View key={id} className="flex-row items-center" style={{ height: 52, borderBottomWidth: 1, borderBottomColor: colors.navLine }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${name}, ${detail}`}
+              onPress={() => {
+                haptic.tap();
+                actions.selectExercise(id);
+              }}
+              className="flex-1 flex-row items-center justify-between active:opacity-60"
+              style={{ height: 52, gap: 12 }}
+            >
+              <Text className="shrink" numberOfLines={1} style={{ color: '#fff', fontFamily: fonts.semibold, fontSize: 16 }}>
+                {name}
+              </Text>
+              <Text style={{ color: colors.muted, fontFamily: fonts.medium, fontSize: 14, fontVariant: ['tabular-nums'] }}>{detail}</Text>
+            </Pressable>
+            {/* Nothing is ticked yet, so taking it off today loses no logged sets. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${name} from today`}
+              onPress={() => {
+                haptic.tap();
+                actions.removeExercise(id);
+              }}
+              hitSlop={6}
+              className="items-center justify-center active:opacity-60"
+              style={{ width: 40, height: 44, marginLeft: 4, marginRight: -8 }}
+            >
+              <CloseIcon size={16} color={colors.muted} />
+            </Pressable>
+          </View>
         );
       })}
     </View>

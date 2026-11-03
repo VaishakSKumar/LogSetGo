@@ -408,6 +408,7 @@ Change colours depend on the effect, not the direction: toward Healthy is green,
 | REC-6 | Tick with no reps | The row shakes and nothing is logged |
 | REC-7 | Switch kg / lbs above the sets | Every weight reads in the new unit; saved weights do not change |
 | REC-8 | Log a set and let the rest run out | The rest screen closes by itself, back on the sets |
+| REC-9 | Open an exercise, close the drawer without logging, tap ✕ on its "To do today" row | The row disappears; nothing else changes and the drawer does not open |
 
 ### New workout plan
 

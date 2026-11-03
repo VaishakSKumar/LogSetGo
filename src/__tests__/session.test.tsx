@@ -66,6 +66,20 @@ describe('Gym Progress states', () => {
     await screen.findByText('Pick an exercise to start');
   });
 
+  it('an exercise opened but not logged waits under To do today, and its ✕ takes it off', async () => {
+    await renderWithApp(<WithBench />);
+    await screen.findAllByLabelText('Log set 1');
+    await press('Dismiss');
+    await waitFor(() => expect(screen.queryByLabelText('Done')).toBeNull());
+
+    await screen.findByText('To do today');
+    expect(screen.getByLabelText(/^Barbell Bench Press, /)).toBeTruthy();
+    await press('Remove Barbell Bench Press from today');
+    await waitFor(() => expect(screen.queryByText('To do today')).toBeNull());
+    expect(screen.queryByLabelText(/^Barbell Bench Press, /)).toBeNull();
+    expect(screen.queryByLabelText('Done')).toBeNull(); // removing does not open the drawer
+  });
+
   it('Done will not save an exercise with nothing checked off, and says why', async () => {
     await renderWithApp(<WithBench />);
     await screen.findAllByLabelText('Log set 1');
