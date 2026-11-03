@@ -1,21 +1,13 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
-import Animated, {
-  FadeIn,
-  LinearTransition,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import { Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import Animated, { FadeIn, LinearTransition, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
 import { formatDuration, parseDurationInput } from '../lib/duration';
 import { haptic } from '../lib/haptics';
-import { fmtSet, resolveSet } from '../lib/progress';
+import { fmtSet } from '../lib/progress';
 import { fmtDelta, fromDisplay, roundDisplay, toDisplay } from '../lib/units';
 import { colors, fonts, motion } from '../theme';
-import type { Ghost, LoadKind, SetMode, SetPerf, SetRow as SetRowData, Unit } from '../types';
+import type { LoadKind, SetMode, SetPerf, SetRow as SetRowData, Unit } from '../types';
 import { CheckIcon } from './Icons';
 
 /* ─────────────── Column widths shared with the table header ─────────────── */
@@ -26,13 +18,19 @@ export const COL = {
   check: 'w-11',
 } as const;
 
-
 /* ─────────────── Numeric cell ─────────────── */
 
 /** How a NumberCell reads and writes its stored number. */
 type CellKind = 'weight' | 'count' | 'duration';
 
-const CELL: Record<CellKind, { format: (n: number) => string; parse: (text: string) => number | null; keyboard: 'decimal-pad' | 'number-pad' }> = {
+const CELL: Record<
+  CellKind,
+  {
+    format: (n: number) => string;
+    parse: (text: string) => number | null;
+    keyboard: 'decimal-pad' | 'number-pad';
+  }
+> = {
   weight: {
     format: (n) => String(n),
     parse: (t) => {
@@ -57,83 +55,107 @@ const CELL: Record<CellKind, { format: (n: number) => string; parse: (text: stri
   },
 };
 
+type Field = 'weight' | 'reps';
+
 interface NumberCellProps {
   value: number | null;
-  ghost: number | null;
-  locked: boolean;
   kind: CellKind;
   label: string;
-  onCommit: (value: number | null) => void;
+  locked: boolean;
+  /** This cell has the keyboard; `draft` is what is typed so far. */
+  editing: boolean;
+  draft: string;
+  /** "next" moves on to reps after kg; "done" closes the keyboard. */
+  returnKey: 'next' | 'done';
+  inputRef: React.RefObject<TextInput | null>;
+  onBegin: () => void;
+  onDraft: (text: string) => void;
+  onSubmit: () => void;
+  onBlur: () => void;
 }
 
 /**
- * Right-aligned numeric field (weight, rep count, or MM:SS duration — `kind` picks how it formats
- * and parses; the stored value is always a plain number, seconds for a duration).
- *  · empty + grey ghost  → one tap accepts the ghost
- *  · filled              → tap to type
- *  · locked (set logged) → read-only
+ * Centred numeric field (weight, rep count, or MM:SS duration — `kind` picks how it formats and
+ * parses; the stored value is always a plain number, seconds for a duration). A logged set is
+ * read-only. Starts empty: nothing is copied in from earlier sets.
+ *
+ * Tapping a filled field clears it and shows the old value in grey, so what you type is the new
+ * value; leave it empty and the old value stays. (Selecting the old text instead is unreliable on
+ * Android: the first digit typed can stay selected and the second one replaces it.)
+ *
+ * Always a real text field, never swapped in and out: moving between kg and reps then hands focus
+ * from one field to the other, and Android keeps the keyboard up instead of closing it.
  */
-function NumberCell({ value, ghost, locked, kind, label, onCommit }: NumberCellProps) {
-  const [editing, setEditing] = useState(false);
-  const [text, setText] = useState('');
-  const { format, parse, keyboard } = CELL[kind];
-
-  const isGhost = value == null && ghost != null;
-  const shown = value ?? ghost;
-  const noWeight = kind === 'weight' && shown === 0;
-
-  const begin = () => {
-    if (locked) return;
-    if (isGhost) {
-      haptic.tap();
-      onCommit(ghost);
-      return;
-    }
-    setText(value == null ? '' : kind === 'duration' ? format(value) : String(value));
-    setEditing(true);
-  };
-
-  const finish = () => {
-    setEditing(false);
-    onCommit(parse(text));
-  };
-
-  if (editing) {
-    return (
-      <TextInput
-        autoFocus
-        selectTextOnFocus
-        value={text}
-        onChangeText={setText}
-        onBlur={finish}
-        onSubmitEditing={finish}
-        keyboardType={kind === 'duration' ? 'numbers-and-punctuation' : keyboard}
-        returnKeyType="done"
-        maxLength={kind === 'duration' ? 5 : 6}
-        accessibilityLabel={label}
-        placeholderTextColor={colors.ghost}
-        placeholder={shown != null ? (kind === 'duration' ? format(shown) : String(shown)) : kind === 'duration' ? '0:00' : '0'}
-        className="h-10 rounded-[10px] border border-white/25 bg-fill px-1 text-center text-num tabular-nums text-label"
-        style={{ outlineStyle: 'none' } as never}
-      />
-    );
-  }
+function NumberCell({ value, kind, label, locked, editing, draft, returnKey, inputRef, onBegin, onDraft, onSubmit, onBlur }: NumberCellProps) {
+  const { format, keyboard } = CELL[kind];
+  const noWeight = kind === 'weight' && value === 0;
+  const shown = value == null || noWeight ? '' : kind === 'duration' ? format(value) : String(value);
+  // What sits over the empty field: the saved value, or in grey while typing until the first key.
+  const cover = !editing ? shown || '–' : draft ? '' : shown || (kind === 'duration' ? '0:00' : '0');
+  const coverColor = editing ? colors.ghost : shown ? colors.label : colors.outline;
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${label}: ${shown == null ? 'empty' : kind === 'duration' ? format(shown) : shown}${isGhost ? ', suggested, tap to accept' : ''}`}
-      disabled={locked}
-      onPress={begin}
-      className="h-10 justify-center px-1 active:opacity-70"
-    >
-      <Text
-        className="text-center text-num tabular-nums"
-        style={{ color: isGhost ? colors.ghost : shown == null || noWeight ? colors.outline : colors.label }}
-      >
-        {shown == null || noWeight ? '–' : kind === 'duration' ? format(shown) : shown}
-      </Text>
-    </Pressable>
+    <View>
+      <TextInput
+        ref={inputRef}
+        editable={!locked}
+        // The saved value is drawn on top, never put in the field, so the field is empty when it is tapped
+        // and the first key typed always starts a new number, however fast it comes. Not a placeholder:
+        // Android does not always redraw a placeholder that changes (switching kg / lbs left it blank).
+        value={editing ? draft : ''}
+        onFocus={onBegin}
+        onChangeText={onDraft}
+        onBlur={onBlur}
+        onSubmitEditing={onSubmit}
+        submitBehavior={returnKey === 'next' ? 'submit' : 'blurAndSubmit'}
+        keyboardType={kind === 'duration' ? 'numbers-and-punctuation' : keyboard}
+        returnKeyType={returnKey}
+        maxLength={kind === 'duration' ? 5 : 6}
+        accessibilityLabel={editing ? label : `${label}: ${value == null ? 'empty' : kind === 'duration' ? format(value) : value}`}
+        className={`rounded-[10px] border text-center ${editing ? 'border-white/25 bg-fill' : 'border-transparent'}`}
+        // Sized like the BMI goal field: no line height or vertical alignment, which on Android push the digits up and clip them.
+        style={
+          {
+            height: 40,
+            padding: 0,
+            paddingHorizontal: 4,
+            color: colors.label,
+            fontFamily: fonts.bold,
+            fontSize: 19,
+            fontVariant: ['tabular-nums'],
+            outlineStyle: 'none',
+          } as never
+        }
+      />
+      {cover ? (
+        <View
+          pointerEvents="none"
+          importantForAccessibility="no-hide-descendants"
+          accessibilityElementsHidden
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text
+            numberOfLines={1}
+            style={{
+              color: coverColor,
+              fontFamily: fonts.bold,
+              fontSize: 19,
+              fontVariant: ['tabular-nums'],
+            }}
+          >
+            {cover}
+          </Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -151,7 +173,9 @@ function CheckButton({ done, active, label, onPress }: { done: boolean; active: 
     if (done) scale.value = withSequence(withTiming(0.72, { duration: 80 }), withSpring(1.18, { damping: 6, stiffness: 320 }), withSpring(1, { damping: 10 }));
   }, [done, scale]);
 
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
   const ring = done || active ? colors.accent : '#5A5D5A';
 
   return (
@@ -183,7 +207,6 @@ interface SetRowProps {
   index: number;
   row: SetRowData;
   prev?: SetPerf;
-  ghost: Ghost;
   unit: Unit;
   active: boolean;
   load?: LoadKind;
@@ -200,16 +223,39 @@ function deltaOf(row: SetRowData, prev: SetPerf | undefined, unit: Unit, mode: S
   if (Math.abs(toDisplay(dw, unit)) >= 0.05) return { text: `${fmtDelta(dw, unit)} ${unit}`, positive: dw > 0 };
   const dr = row.reps - prev.reps;
   if (dr === 0) return null;
-  if (mode === 'time') return { text: `${dr > 0 ? '+' : '−'}${formatDuration(Math.abs(dr))}`, positive: dr > 0 };
-  return { text: `${dr > 0 ? '+' : '−'}${Math.abs(dr)} rep${Math.abs(dr) > 1 ? 's' : ''}`, positive: dr > 0 };
+  if (mode === 'time')
+    return {
+      text: `${dr > 0 ? '+' : '−'}${formatDuration(Math.abs(dr))}`,
+      positive: dr > 0,
+    };
+  return {
+    text: `${dr > 0 ? '+' : '−'}${Math.abs(dr)} rep${Math.abs(dr) > 1 ? 's' : ''}`,
+    positive: dr > 0,
+  };
 }
 
-function SetRowView({ index, row, prev, ghost, unit, active, load = 'kg', onChange, onLog, onDetails }: SetRowProps) {
+function SetRowView({ index, row, prev, unit, active, load = 'kg', onChange, onLog, onDetails }: SetRowProps) {
   const mode = row.mode ?? 'reps';
+  const repsKind: CellKind = mode === 'time' ? 'duration' : 'count';
   const glow = useSharedValue(0);
   const pop = useSharedValue(1);
   const shake = useSharedValue(0);
   const first = useRef(true);
+
+  // Which cell is being typed in, and what is typed. Kept in refs too, so the tick and a blur from
+  // a cell that is going away always read the latest text, never a stale render.
+  const [editing, setEditingState] = useState<Field | null>(null);
+  const [draft, setDraftState] = useState('');
+  const editingRef = useRef<Field | null>(null);
+  const draftRef = useRef('');
+  const setEditing = (f: Field | null) => {
+    editingRef.current = f;
+    setEditingState(f);
+  };
+  const setDraft = (t: string) => {
+    draftRef.current = t;
+    setDraftState(t);
+  };
 
   // Micro-bounce + green glow the moment a set is logged (from any entry point).
   useEffect(() => {
@@ -226,12 +272,83 @@ function SetRowView({ index, row, prev, ghost, unit, active, load = 'kg', onChan
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.done]);
 
-  const wrap = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }, { translateX: shake.value }] }));
-  const glowStyle = useAnimatedStyle(() => ({ opacity: glow.value * 0.28, transform: [{ scale: 1 + glow.value * 0.025 }] }));
+  const wrap = useAnimatedStyle(() => ({
+    transform: [{ scale: pop.value }, { translateX: shake.value }],
+  }));
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glow.value * 0.28,
+    transform: [{ scale: 1 + glow.value * 0.025 }],
+  }));
 
-  const resolved = resolveSet(row, ghost);
   const done = row.done;
   const delta = done ? deltaOf(row, prev, unit, mode) : null;
+  const weightDisplay = row.weight == null ? null : roundDisplay(toDisplay(row.weight, unit));
+
+  // The set as last saved. Updated on commit too, so a commit and a tick in the same moment agree.
+  const latest = useRef({ weight: row.weight, reps: row.reps });
+  latest.current = { weight: row.weight, reps: row.reps };
+  const weightRef = useRef<TextInput>(null);
+  const repsRef = useRef<TextInput>(null);
+
+  /** Saves what is typed in the open cell, and returns the set as it now stands (weight in kg). */
+  const commit = () => {
+    let { weight, reps } = latest.current;
+    const field = editingRef.current;
+    // Nothing typed keeps what was there.
+    if (!draftRef.current.trim()) return { weight, reps };
+    if (field === 'weight') {
+      const v = CELL.weight.parse(draftRef.current);
+      const next = v == null ? null : fromDisplay(v, unit);
+      if (next !== weight) onChange(row.id, 'weight', next);
+      weight = next;
+    } else if (field === 'reps') {
+      const next = CELL[repsKind].parse(draftRef.current);
+      if (next !== reps) onChange(row.id, 'reps', next);
+      reps = next;
+    }
+    latest.current = { weight, reps };
+    return { weight, reps };
+  };
+
+  // The cell that just handed over the keyboard, and the text it had then.
+  const handedOff = useRef<{ field: Field; text: string } | null>(null);
+
+  // After "Next", Android can repeat kg's text, and keys pressed quickly can still land in kg before the
+  // keyboard reaches reps. Repeats are ignored; anything new belongs to the open cell.
+  const typeInto = (field: Field) => (t: string) => {
+    if (editingRef.current === field) return setDraft(t);
+    const from = handedOff.current;
+    if (!editingRef.current || from?.field !== field || !t.startsWith(from.text)) return;
+    const extra = t.slice(from.text.length);
+    from.text = t;
+    if (extra) setDraft(draftRef.current + extra);
+  };
+
+  /** A cell got focus (a tap, or "next" from kg): save the other cell, start typing in this one. */
+  const begin = (field: Field) => {
+    if (done || editingRef.current === field) return;
+    handedOff.current = editingRef.current ? { field: editingRef.current, text: draftRef.current } : null;
+    commit();
+    setDraft(''); // starts empty; the old value shows as the placeholder
+    setEditing(field);
+  };
+
+  const close = () => {
+    commit();
+    setEditing(null);
+  };
+
+  // Kg's "next" key hands the keyboard straight to reps; reps' "done" closes it.
+  const submit = () => {
+    if (editingRef.current === 'weight') {
+      begin('reps');
+      repsRef.current?.focus();
+    } else close();
+  };
+  // A cell only closes itself when it still has the keyboard; switching cells is handled by begin().
+  const blurFrom = (field: Field) => () => {
+    if (editingRef.current === field) close();
+  };
 
   const press = () => {
     if (done) {
@@ -239,22 +356,38 @@ function SetRowView({ index, row, prev, ghost, unit, active, load = 'kg', onChan
       onLog(row.id, row.weight ?? 0, row.reps ?? 0); // toggles back to editable
       return;
     }
-    if (!resolved) {
+    const now = commit();
+    setEditing(null);
+    Keyboard.dismiss();
+    if (now.reps == null || now.reps < 1) {
       haptic.warn();
-      shake.value = withSequence(withTiming(-6, { duration: 50 }), withTiming(6, { duration: 80 }), withTiming(-4, { duration: 70 }), withTiming(0, { duration: 50 }));
+      shake.value = withSequence(
+        withTiming(-6, { duration: 50 }),
+        withTiming(6, { duration: 80 }),
+        withTiming(-4, { duration: 70 }),
+        withTiming(0, { duration: 50 }),
+      );
       return;
     }
-    onLog(row.id, resolved.weight, resolved.reps);
+    onLog(row.id, now.weight ?? 0, now.reps);
   };
-
-  const weightDisplay = row.weight == null ? null : roundDisplay(toDisplay(row.weight, unit));
-  const weightGhost = ghost.weight == null ? null : roundDisplay(toDisplay(ghost.weight, unit));
 
   return (
     <Animated.View entering={FadeIn.duration(motion.duration)} layout={LinearTransition.duration(motion.duration)} style={wrap}>
       <Animated.View
         pointerEvents="none"
-        style={[{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, borderRadius: 12, backgroundColor: colors.accent }, glowStyle]}
+        style={[
+          {
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            left: 0,
+            borderRadius: 12,
+            backgroundColor: colors.accent,
+          },
+          glowStyle,
+        ]}
       />
       <View
         className="flex-row items-center"
@@ -277,10 +410,28 @@ function SetRowView({ index, row, prev, ghost, unit, active, load = 'kg', onChan
           hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
           className={`${COL.set} h-11 justify-center active:opacity-60`}
         >
-          <Text className="text-body tabular-nums" style={{ color: row.warmup ? colors.warn : colors.secondary, fontFamily: fonts.semibold }}>
+          <Text
+            className="text-body tabular-nums"
+            style={{
+              color: row.warmup ? colors.warn : colors.secondary,
+              fontFamily: fonts.semibold,
+            }}
+          >
             {row.warmup ? 'W' : index + 1}
           </Text>
-          {row.rpe || row.note ? <View style={{ position: 'absolute', top: 6, right: 2, width: 5, height: 5, borderRadius: 3, backgroundColor: colors.muted }} /> : null}
+          {row.rpe || row.note ? (
+            <View
+              style={{
+                position: 'absolute',
+                top: 6,
+                right: 2,
+                width: 5,
+                height: 5,
+                borderRadius: 3,
+                backgroundColor: colors.muted,
+              }}
+            />
+          ) : null}
         </Pressable>
 
         <View className={`${COL.previous} justify-center`}>
@@ -299,10 +450,16 @@ function SetRowView({ index, row, prev, ghost, unit, active, load = 'kg', onChan
             <NumberCell
               label={`Set ${index + 1} weight in ${unit}`}
               value={weightDisplay}
-              ghost={weightGhost}
-              locked={done}
               kind="weight"
-              onCommit={(v) => onChange(row.id, 'weight', v == null ? null : fromDisplay(v, unit))}
+              locked={done}
+              editing={editing === 'weight'}
+              draft={draft}
+              returnKey="next"
+              inputRef={weightRef}
+              onBegin={() => begin('weight')}
+              onDraft={typeInto('weight')}
+              onSubmit={submit}
+              onBlur={blurFrom('weight')}
             />
           </View>
         )}
@@ -311,19 +468,20 @@ function SetRowView({ index, row, prev, ghost, unit, active, load = 'kg', onChan
           <NumberCell
             label={`Set ${index + 1} ${mode === 'time' ? 'duration' : 'reps'}`}
             value={row.reps}
-            ghost={ghost.reps}
+            kind={repsKind}
             locked={done}
-            kind={mode === 'time' ? 'duration' : 'count'}
-            onCommit={(v) => onChange(row.id, 'reps', v)}
+            editing={editing === 'reps'}
+            draft={draft}
+            returnKey="done"
+            inputRef={repsRef}
+            onBegin={() => begin('reps')}
+            onDraft={typeInto('reps')}
+            onSubmit={submit}
+            onBlur={blurFrom('reps')}
           />
         </View>
 
-        <CheckButton
-          done={done}
-          active={active}
-          label={done ? `Undo set ${index + 1}` : `Log set ${index + 1}`}
-          onPress={press}
-        />
+        <CheckButton done={done} active={active} label={done ? `Undo set ${index + 1}` : `Log set ${index + 1}`} onPress={press} />
       </View>
     </Animated.View>
   );

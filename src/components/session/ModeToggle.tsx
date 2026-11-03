@@ -4,26 +4,21 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 
 import { haptic } from '../../lib/haptics';
 import { colors, fonts, motion } from '../../theme';
-import type { SetMode } from '../../types';
-
-const OPTIONS: { key: SetMode; label: string }[] = [
-  { key: 'reps', label: 'Reps' },
-  { key: 'time', label: 'Time' },
-];
+import type { SetMode, Unit } from '../../types';
 
 /**
- * Segmented control: a dark track with a sliding white pill behind whichever segment is active. Changing it saves your choice for this exercise going forward.
+ * Segmented control: a dark track with a sliding white pill behind whichever segment is active.
  */
-export function ModeToggle({ mode, onChange }: { mode: SetMode; onChange: (mode: SetMode) => void }) {
+function Segmented<T extends string>({ value, options, describe, onChange }: { value: T; options: { key: T; label: string }[]; describe: (label: string) => string; onChange: (value: T) => void }) {
   const [trackWidth, setTrackWidth] = useState(0);
   const x = useSharedValue(0);
-  const segmentWidth = trackWidth / OPTIONS.length;
+  const segmentWidth = trackWidth / options.length;
 
   useEffect(() => {
     if (!trackWidth) return;
-    const i = OPTIONS.findIndex((o) => o.key === mode);
+    const i = options.findIndex((o) => o.key === value);
     x.value = withTiming(i * segmentWidth, motion);
-  }, [mode, trackWidth, segmentWidth, x]);
+  }, [value, options, trackWidth, segmentWidth, x]);
 
   const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
 
@@ -40,22 +35,42 @@ export function ModeToggle({ mode, onChange }: { mode: SetMode; onChange: (mode:
           style={[{ position: 'absolute', top: 3, bottom: 3, left: 3, width: segmentWidth - 3, borderRadius: 9, backgroundColor: '#fff' }, pill]}
         />
       ) : null}
-      {OPTIONS.map((o) => (
+      {options.map((o) => (
         <Pressable
           key={o.key}
           accessibilityRole="tab"
-          accessibilityState={{ selected: mode === o.key }}
-          accessibilityLabel={`${o.label} mode`}
+          accessibilityState={{ selected: value === o.key }}
+          accessibilityLabel={describe(o.label)}
           onPress={() => {
-            if (mode === o.key) return;
+            if (value === o.key) return;
             haptic.tap();
             onChange(o.key);
           }}
           className="flex-1 items-center justify-center"
         >
-          <Text style={{ color: mode === o.key ? '#000' : colors.secondary, fontFamily: fonts.bold, fontSize: 14 }}>{o.label}</Text>
+          <Text style={{ color: value === o.key ? '#000' : colors.secondary, fontFamily: fonts.bold, fontSize: 14 }}>{o.label}</Text>
         </Pressable>
       ))}
     </View>
   );
+}
+
+const MODES: { key: SetMode; label: string }[] = [
+  { key: 'reps', label: 'Reps' },
+  { key: 'time', label: 'Time' },
+];
+
+const UNITS: { key: Unit; label: string }[] = [
+  { key: 'kg', label: 'kg' },
+  { key: 'lb', label: 'lbs' },
+];
+
+/** Reps or Time. Changing it saves your choice for this exercise going forward. */
+export function ModeToggle({ mode, onChange }: { mode: SetMode; onChange: (mode: SetMode) => void }) {
+  return <Segmented value={mode} options={MODES} describe={(label) => `${label} mode`} onChange={onChange} />;
+}
+
+/** kg or lbs, for gyms that label their plates differently. Saved weights stay the same; only how they read changes. */
+export function UnitToggle({ unit, onChange }: { unit: Unit; onChange: (unit: Unit) => void }) {
+  return <Segmented value={unit} options={UNITS} describe={(label) => `Weights in ${label}`} onChange={onChange} />;
 }

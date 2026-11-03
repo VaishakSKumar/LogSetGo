@@ -20,7 +20,7 @@ import { TimerDashboard } from '../TimerDashboard';
 import { AnimatedNumber } from './AnimatedNumber';
 import { BottomDrawer } from './BottomDrawer';
 import { ExerciseMedia } from './ExerciseMedia';
-import { ModeToggle } from './ModeToggle';
+import { ModeToggle, UnitToggle } from './ModeToggle';
 import { RestOverlay } from './RestOverlay';
 
 /** Live totals: they count up the instant a set is checked off (and back down if it's undone). */
@@ -83,6 +83,7 @@ interface Props {
   /** Reps or Time for the exercise currently selected. Ignored while nothing is picked. */
   mode: SetMode;
   onModeChange: (mode: SetMode) => void;
+  onUnitChange: (unit: Unit) => void;
   /** "Next: Set 2 · 12 reps · 20 kg", shown under the rest countdown */
   nextUp: string;
   today: string;
@@ -188,16 +189,16 @@ export function WorkoutRecorderSheet(p: Props) {
         <>
           {p.active ? (
             <>
-              <View className="flex-row items-center" style={{ gap: 12 }}>
-                <Text className="flex-1 text-meta text-secondary" accessibilityLabel={p.lastTime ?? `First time logging ${p.active.name}`}>
-                  {p.lastTime ?? `First time logging ${p.active.name}. Today’s sets become your baseline.`}
-                </Text>
+              <Text className="text-meta text-secondary" accessibilityLabel={p.lastTime ?? `First time logging ${p.active.name}`}>
+                {p.lastTime ?? `First time logging ${p.active.name}. Today’s sets become your baseline.`}
+              </Text>
+              <View className="flex-row items-center justify-end" style={{ gap: 8 }}>
+                {load === 'none' ? null : <UnitToggle unit={p.unit} onChange={p.onUnitChange} />}
                 <ModeToggle mode={p.mode} onChange={p.onModeChange} />
               </View>
               <ExerciseMedia exercise={p.active} />
               <SetTable
                 rows={p.rows}
-                ghosts={p.ghosts}
                 prevSets={p.prevSets}
                 unit={p.unit}
                 mode={p.mode}
@@ -220,7 +221,7 @@ export function WorkoutRecorderSheet(p: Props) {
           ) : (
             <View className="items-center px-6 py-6">
               <Text className="text-h2 text-label">Pick an exercise to start</Text>
-              <Text className="mt-1 text-center text-body text-muted">Your last weight and reps are filled in as grey suggestions. Tap a box to accept it, or just tap the check.</Text>
+              <Text className="mt-1 text-center text-body text-muted">Last time's sets show beside each row. Type the weight and reps, then tap the check.</Text>
             </View>
           )}
         </>

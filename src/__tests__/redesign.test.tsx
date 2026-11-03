@@ -63,6 +63,20 @@ describe('Rest overlay', () => {
     await fireEvent.press(screen.getByLabelText('Skip'));
     await waitFor(() => expect(screen.queryByLabelText('Rest countdown')).toBeNull());
   });
+
+  it('closes by itself when the rest ends, back on the set rows', async () => {
+    const storage = require('@react-native-async-storage/async-storage');
+    await storage.setItem('minimalist-gym-tracker/timer/v1', JSON.stringify({ defaultSeconds: 3, autoStart: true }));
+    await renderWithApp(<WithBench />);
+    await screen.findAllByLabelText('Log set 1');
+    for (let i = 0; i < 5; i++) await fireEvent.press(screen.getByLabelText('Increase reps'));
+    await fireEvent.press(screen.getAllByLabelText('Log set 1')[0]);
+
+    await screen.findByLabelText('Rest countdown');
+    await waitFor(() => expect(screen.queryByLabelText('Rest countdown')).toBeNull(), { timeout: 15000 }); // a real 3 s clock, so allow a slow machine
+    expect(screen.getByLabelText('Undo set 1')).toBeTruthy();
+    expect(screen.getAllByLabelText('Log set 2').length).toBeGreaterThan(0);
+  });
 });
 
 describe('Form guide', () => {

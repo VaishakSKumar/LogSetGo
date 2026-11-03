@@ -22,12 +22,13 @@ import { STATUS_META, type Status } from '../lib/attendance';
 import { relativeDay } from '../lib/dates';
 import { formatDuration } from '../lib/duration';
 import { haptic } from '../lib/haptics';
-import { fmtSet, ghostFor, previousEntry, topSet } from '../lib/progress';
+import { fmtSet, previousEntry, topSet } from '../lib/progress';
 import { exerciseTut, exerciseVolume, formatSets, loggedExercises, summarizeDay, type LoggedExercise } from '../lib/session';
 import { browseExercises } from '../lib/suggest';
 import { roundDisplay, toDisplay } from '../lib/units';
 import { useDayStep } from '../lib/useDayStep';
-import type { SetMode } from '../types';
+import type { Ghost, SetMode } from '../types';
+const NO_GHOST: Ghost = { weight: null, reps: null };
 import { useAttendance } from '../store/attendance';
 import { useGym } from '../store/gym';
 import { useTimer } from '../store/timer';
@@ -98,15 +99,17 @@ export function WorkoutScreen() {
 
   const entries = active ? (mode === 'time' ? durationHistory[active.id] : history[active.id]) : undefined;
   const prevSets = useMemo(() => previousEntry(entries, today)?.sets, [entries, today]);
-  const ghosts = useMemo(() => rows.map((_, i) => ghostFor(i, rows, prevSets)), [rows, prevSets]);
+  // Every set starts empty: nothing is copied in from the last set or the last session ("Last" shows those).
+  const ghosts = useMemo(() => rows.map(() => NO_GHOST), [rows]);
 
   const activeIndex = rows.findIndex((r) => !r.done);
   const activeRow = activeIndex >= 0 ? rows[activeIndex] : undefined;
 
-  const nextGhost = activeIndex >= 0 ? ghosts[activeIndex] : undefined;
-  const nextValue = activeRow?.reps ?? nextGhost?.reps ?? 0;
-  const nextWeight = roundDisplay(toDisplay(activeRow?.weight ?? nextGhost?.weight ?? 0, unit));
-  const nextUp = activeRow ? `Next: Set ${activeIndex + 1} · ${mode === 'time' ? formatDuration(nextValue) : `${nextValue} reps`} · ${nextWeight} ${unit}` : 'All sets done';
+  const nextUp = !activeRow
+    ? 'All sets done'
+    : activeRow.reps == null
+      ? `Next: Set ${activeIndex + 1}`
+      : `Next: Set ${activeIndex + 1} · ${mode === 'time' ? formatDuration(activeRow.reps) : `${activeRow.reps} reps`}${activeRow.weight ? ` · ${roundDisplay(toDisplay(activeRow.weight, unit))} ${unit}` : ''}`;
 
   const lastTimeFor = (id: string) => {
     const m = modeOf(id);
@@ -153,9 +156,9 @@ export function WorkoutScreen() {
     setHeroSearchOpen(false);
   }, [today]);
 
-  // The overlay leaves with the timer: Skip, or the short linger after 0:00.
+  // The overlay leaves the moment the rest ends (or on Skip), back to the set you are recording.
   useEffect(() => {
-    if (timer.status === 'idle') setRestOpen(false);
+    if (timer.status !== 'running' && timer.status !== 'paused') setRestOpen(false);
   }, [timer.status]);
 
   const closeDrawer = useCallback(() => {
@@ -393,6 +396,7 @@ export function WorkoutScreen() {
         step={step}
         mode={mode}
         onModeChange={(m) => active && actions.setExerciseMode(active.id, m)}
+        onUnitChange={actions.setUnit}
         today={today}
         activeIndex={activeIndex}
         activeRow={activeRow}

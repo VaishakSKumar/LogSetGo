@@ -35,7 +35,7 @@ describe('Time-based sets', () => {
     await screen.findByLabelText('Time mode');
 
     const durationField = await screen.findByLabelText('Set 1 duration: empty');
-    await fireEvent.press(durationField);
+    await fireEvent(durationField, 'focus');
     const input = await screen.findByLabelText('Set 1 duration');
     await fireEvent.changeText(input, '70');
     await fireEvent(input, 'blur');
@@ -58,7 +58,7 @@ describe('Time-based sets', () => {
     await renderWithApp(<WithPlank />);
     await screen.findByLabelText('Time mode');
     for (let i = 0; i < 9; i++) await press('Increase time'); // 9 × 5s = 45s
-    expect(screen.getAllByText('0:45').length).toBeGreaterThan(0);
+    await screen.findByLabelText('Set 1 duration: 0:45');
     await press(/^Log set 1/);
     await screen.findByLabelText('Undo set 1');
   });

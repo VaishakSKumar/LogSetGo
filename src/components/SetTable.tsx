@@ -3,11 +3,10 @@ import { Pressable, Text, View } from 'react-native';
 import { COL, SetRowItem } from './SetRow';
 import { PlusIcon } from './Icons';
 import { colors, fonts } from '../theme';
-import type { Ghost, LoadKind, SetMode, SetPerf, SetRow, Unit } from '../types';
+import type { LoadKind, SetMode, SetPerf, SetRow, Unit } from '../types';
 
 interface SetTableProps {
   rows: SetRow[];
-  ghosts: Ghost[];
   prevSets: SetPerf[] | undefined;
   unit: Unit;
   /** Which column the second field is: Reps or Time. New rows are created in this mode. */
@@ -28,7 +27,7 @@ const Head = ({ children, className = '' }: { children: string; className?: stri
 );
 
 /** Set | Last | kg | Reps-or-Time | ✓ */
-export function SetTable({ rows, ghosts, prevSets, unit, mode, load = 'kg', activeRowId, onChange, onLog, onAdd, onRemove, onDetails }: SetTableProps) {
+export function SetTable({ rows, prevSets, unit, mode, load = 'kg', activeRowId, onChange, onLog, onAdd, onRemove, onDetails }: SetTableProps) {
   const canRemove = rows.length > 1 && !rows[rows.length - 1].done;
 
   return (
@@ -47,7 +46,6 @@ export function SetTable({ rows, ghosts, prevSets, unit, mode, load = 'kg', acti
           index={i}
           row={row}
           prev={prevSets?.[i]}
-          ghost={ghosts[i]}
           unit={unit}
           active={row.id === activeRowId}
           load={load}

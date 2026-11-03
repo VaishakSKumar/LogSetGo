@@ -396,6 +396,19 @@ Change colours depend on the effect, not the direction: toward Healthy is green,
 |---|---|---|
 | KEY-1 | Tap any field: sets, weight, goal, plan name, search, notes | The field and what you type stay above the keyboard |
 
+### Recording sets
+
+| ID | Test | Expected |
+|---|---|---|
+| REC-1 | Open an exercise | Every set's kg and reps are empty. "Last" shows last session. |
+| REC-2 | Type kg, press Next on the keyboard | The cursor moves to reps |
+| REC-3 | Type reps, tap the tick without closing the keyboard | The set logs exactly what was typed |
+| REC-4 | Log set 1 | Set 2 stays empty, nothing copied from set 1 |
+| REC-5 | Tap a filled kg or reps, type a new value, tick | The field empties with the old value in grey; the new value is logged. Leaving it empty keeps the old value. |
+| REC-6 | Tick with no reps | The row shakes and nothing is logged |
+| REC-7 | Switch kg / lbs above the sets | Every weight reads in the new unit; saved weights do not change |
+| REC-8 | Log a set and let the rest run out | The rest screen closes by itself, back on the sets |
+
 ### New workout plan
 
 The + beside the day name opens it. Saving a plan logs nothing.
